@@ -1,0 +1,2385 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ArchLog (아크로그) — 학생선수 양궁 연간 성과 관리</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Pretendard 웹폰트 CDN -->
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard', '"Malgun Gothic"', '"Apple SD Gothic Neo"', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f5fa',
+              100: '#dce7f3',
+              200: '#b9cfe7',
+              600: '#2a5285',
+              700: '#234470',
+              800: '#1E3A5F',
+              900: '#152a46',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    body {
+      font-family: 'Pretendard', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+      background-color: #F8FAFC;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* 매트릭스 첫 번째 열 고정 */
+    .sticky-col {
+      position: sticky;
+      left: 0;
+      z-index: 10;
+    }
+
+    /* 필터 칩 전환 효과 */
+    .filter-chip {
+      transition: all 0.15s ease;
+    }
+
+    /* 가로형 A4 인쇄 전용 스타일 */
+    @media print {
+      @page {
+        size: A4 landscape;
+        margin: 10mm;
+      }
+      body {
+        background: #ffffff !important;
+        color: #0f172a !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .print-only {
+        display: block !important;
+      }
+      .print-break-inside-avoid {
+        break-inside: avoid;
+      }
+      .print-shadow-none {
+        box-shadow: none !important;
+        border: 1px solid #cbd5e1 !important;
+      }
+      .overflow-x-auto {
+        overflow: visible !important;
+      }
+      .sticky-col {
+        position: static !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-[#F8FAFC] text-slate-800 min-h-screen flex flex-col">
+
+  <!-- ==================== 상단 헤더 (브랜드 + 3대 퀵 액션 버튼) ==================== -->
+  <header class="bg-[#1E3A5F] text-white shadow-md no-print sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- 1단: 로고 & 3대 퀵 액션 버튼 -->
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between py-3.5 gap-3">
+        <!-- 좌측: ArchLog SVG 로고 마크 및 학교/운동부 정보 -->
+        <div class="flex items-center gap-3.5">
+          <div class="w-11 h-11 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0 shadow-inner">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" class="w-8 h-8" fill="none" aria-label="ArchLog 로고">
+              <circle cx="19" cy="21" r="14" stroke="#93C5FD" stroke-width="2" stroke-opacity="0.45" />
+              <circle cx="19" cy="21" r="9" stroke="#E2E8F0" stroke-width="2" stroke-opacity="0.85" />
+              <circle cx="19" cy="21" r="4" fill="#FBBF24" />
+              <line x1="34" y1="6" x2="20.5" y2="19.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" />
+              <path d="M31 5L34.5 5.5L35 9" stroke="#FBBF24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M28.5 7.5L32 8L32.5 11.5" stroke="#FBBF24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <div class="flex items-baseline gap-1.5">
+                <span class="text-xl sm:text-2xl font-extrabold tracking-tight text-white">Arch<span class="text-amber-400">Log</span></span>
+                <span class="text-xs font-semibold text-slate-300">아크로그</span>
+              </div>
+              <span class="hidden sm:inline-block h-4 w-px bg-white/25 mx-0.5"></span>
+              <span id="headerTitle" class="text-xs sm:text-sm font-semibold text-sky-100 bg-white/10 px-2.5 py-0.5 rounded-full border border-white/15">
+                2026학년도 한빛초·중 양궁부
+              </span>
+              <button onclick="openMetaModal()" class="text-[11px] px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 text-slate-200 border border-white/15 transition">
+                정보 수정
+              </button>
+            </div>
+            <p class="text-xs text-slate-300 mt-0.5">아크로그 · 학생선수 양궁 연간 성과 관리</p>
+          </div>
+        </div>
+
+        <!-- 우측: 어느 탭에서나 즉시 접근 가능한 3대 퀵 액션 버튼 -->
+        <div class="flex flex-wrap items-center gap-2">
+          <button onclick="openCompModal()" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/25 font-bold text-xs sm:text-sm shadow-xs transition">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-sky-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            + 대회 추가
+          </button>
+
+          <button onclick="openAthleteModal()" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/25 font-bold text-xs sm:text-sm shadow-xs transition">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+            </svg>
+            + 선수 추가
+          </button>
+
+          <button onclick="openResultModal()" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs sm:text-sm shadow-sm transition">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            + 성과 기록
+          </button>
+        </div>
+      </div>
+
+      <!-- 2단: 4대 메인 탭 네비게이션 + 컴팩트 유틸리티 툴바 -->
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between border-t border-white/15 pt-2 gap-2">
+        <!-- 4대 메인 탭 -->
+        <nav class="flex gap-1 overflow-x-auto -mb-px" aria-label="메인 탭">
+          <button data-tab="overview" onclick="switchTab('overview')" class="tab-btn whitespace-nowrap px-4 py-2.5 text-sm font-semibold rounded-t-xl border-b-2 transition">
+            📊 한눈에 보기
+          </button>
+          <button data-tab="results" onclick="switchTab('results')" class="tab-btn whitespace-nowrap px-4 py-2.5 text-sm font-semibold rounded-t-xl border-b-2 transition">
+            📋 성과 기록 관리
+          </button>
+          <button data-tab="competitions" onclick="switchTab('competitions')" class="tab-btn whitespace-nowrap px-4 py-2.5 text-sm font-semibold rounded-t-xl border-b-2 transition">
+            🏆 연간 대회 관리
+          </button>
+          <button data-tab="athletes" onclick="switchTab('athletes')" class="tab-btn whitespace-nowrap px-4 py-2.5 text-sm font-semibold rounded-t-xl border-b-2 transition">
+            👥 학생선수 명단
+          </button>
+        </nav>
+
+        <!-- 보조 유틸리티 툴바 (CSV 드롭다운, 인쇄, 예시 데이터, 전체 초기화) -->
+        <div class="flex flex-wrap items-center gap-1.5 pb-2 lg:pb-1.5">
+          <!-- 엑셀 CSV 내보내기 드롭다운 -->
+          <div class="relative" id="csvDropdownWrap">
+            <button type="button" onclick="toggleCsvMenu(event)" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-100 border border-white/15 text-xs font-medium transition">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V3" />
+              </svg>
+              엑셀 CSV
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div id="csvDropdownMenu" class="hidden absolute right-0 mt-1.5 w-52 rounded-xl bg-white text-slate-800 shadow-xl border border-slate-200 py-1.5 z-50">
+              <button onclick="exportAllResultsCSV(); closeCsvMenu();" class="w-full text-left px-3.5 py-2 text-xs font-semibold hover:bg-slate-50 flex items-center justify-between">
+                <span>📄 상세 성과 전체</span>
+                <span class="text-[10px] text-slate-400">CSV</span>
+              </button>
+              <button onclick="exportMatrixCSV(); closeCsvMenu();" class="w-full text-left px-3.5 py-2 text-xs font-semibold hover:bg-slate-50 flex items-center justify-between">
+                <span>📊 연간 매트릭스 표</span>
+                <span class="text-[10px] text-slate-400">CSV</span>
+              </button>
+              <button onclick="exportFilteredResultsCSV(); closeCsvMenu();" class="w-full text-left px-3.5 py-2 text-xs font-semibold hover:bg-slate-50 flex items-center justify-between border-t border-slate-100">
+                <span>🔍 현재 검색 결과</span>
+                <span class="text-[10px] text-slate-400">CSV</span>
+              </button>
+            </div>
+          </div>
+
+          <button onclick="window.print()" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-100 border border-white/15 text-xs font-medium transition">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-sky-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            보고서 인쇄
+          </button>
+
+          <button onclick="confirmLoadSample()" class="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 border border-white/10 text-xs font-medium transition">
+            예시 데이터
+          </button>
+
+          <button onclick="confirmResetAll()" class="px-2.5 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/35 text-rose-100 border border-rose-400/30 text-xs font-medium transition">
+            전체 초기화
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== 인쇄 전용 공식 보고서 헤더 (ArchLog 로고 & 결재란 포함) ==================== -->
+  <div class="hidden print-only max-w-7xl mx-auto px-4 pt-1 pb-4 border-b-2 border-[#1E3A5F] mb-4">
+    <div class="flex justify-between items-end gap-4">
+      <div class="flex items-start gap-3">
+        <div class="w-12 h-12 rounded-xl bg-[#1E3A5F] flex items-center justify-center shrink-0 mt-0.5">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" class="w-9 h-9" fill="none">
+            <circle cx="19" cy="21" r="14" stroke="#93C5FD" stroke-width="2" stroke-opacity="0.5" />
+            <circle cx="19" cy="21" r="9" stroke="#E2E8F0" stroke-width="2" />
+            <circle cx="19" cy="21" r="4" fill="#FBBF24" />
+            <line x1="34" y1="6" x2="20.5" y2="19.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" />
+            <path d="M31 5L34.5 5.5L35 9" stroke="#FBBF24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </div>
+        <div>
+          <p class="text-[11px] text-[#1E3A5F] font-bold tracking-wider uppercase">ArchLog (아크로그) · 학생선수 양궁 연간 성과 관리</p>
+          <h1 id="printTitle" class="text-2xl font-bold text-[#1E3A5F] mt-0.5">2026학년도 한빛초·중 양궁부 연간 성과 보고서</h1>
+          <p id="printFilterSummary" class="text-xs text-slate-600 mt-1">조회 조건: 전체</p>
+          <p id="printDate" class="text-xs text-slate-500 mt-0.5">출력일: -</p>
+        </div>
+      </div>
+      <!-- 공식 학교 결재란 -->
+      <table class="border-collapse border border-slate-700 text-xs text-center shrink-0">
+        <tr>
+          <td rowspan="2" class="border border-slate-700 px-2 py-1 font-bold bg-slate-100 w-7 leading-tight">결<br/>재</td>
+          <td class="border border-slate-700 px-3 py-1 font-semibold bg-slate-50 w-16">담당</td>
+          <td class="border border-slate-700 px-3 py-1 font-semibold bg-slate-50 w-16">부장</td>
+          <td class="border border-slate-700 px-3 py-1 font-semibold bg-slate-50 w-16">교감</td>
+          <td class="border border-slate-700 px-3 py-1 font-semibold bg-slate-50 w-16">교장</td>
+        </tr>
+        <tr class="h-12">
+          <td class="border border-slate-700"></td>
+          <td class="border border-slate-700"></td>
+          <td class="border border-slate-700"></td>
+          <td class="border border-slate-700"></td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ==================== 메인 콘텐츠 영역 ==================== -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- ==================== 탭 1: 한눈에 보기 (대시보드 & 연간 매트릭스) ==================== -->
+    <section id="tab-overview" class="tab-panel space-y-5">
+
+      <!-- 5대 조건 실시간 연동 빠른 필터 바 -->
+      <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200/90 no-print space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="w-2 h-5 rounded-full bg-[#1E3A5F]"></span>
+            <h2 class="text-sm font-bold text-slate-900">대시보드 · 매트릭스 실시간 빠른 필터</h2>
+            <span id="overviewFilterBadge" class="text-xs px-2.5 py-0.5 rounded-full bg-brand-50 text-[#1E3A5F] font-semibold border border-brand-200">
+              전체 보기
+            </span>
+          </div>
+          <button onclick="resetOverviewFilters()" class="text-xs font-semibold text-slate-500 hover:text-[#1E3A5F] underline">
+            ↺ 필터 초기화
+          </button>
+        </div>
+
+        <div class="space-y-2">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="text-xs font-bold text-slate-500 w-14 shrink-0">부별</span>
+              <div id="overviewDivisionChips" class="flex flex-wrap gap-1.5"></div>
+            </div>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="text-xs font-bold text-slate-500 w-14 shrink-0">종별</span>
+              <div id="overviewBowChips" class="flex flex-wrap gap-1.5"></div>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100">
+            <span class="text-xs font-bold text-slate-500 w-14 shrink-0">대회규모</span>
+            <div id="overviewScaleChips" class="flex flex-wrap gap-1.5"></div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100">
+            <span class="text-xs font-bold text-slate-500 w-14 shrink-0">등수별</span>
+            <div id="overviewAwardChips" class="flex flex-wrap gap-1.5"></div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100">
+            <span class="text-xs font-bold text-slate-500 w-14 shrink-0">거리별</span>
+            <div id="overviewDistanceChips" class="flex flex-wrap gap-1.5"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 상단 8개 KPI 카드 -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 print-break-inside-avoid">
+        <!-- 1. 등록 대회 수 -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 print-shadow-none">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-500">등록 대회 수</span>
+            <span class="w-7 h-7 rounded-lg bg-brand-50 text-[#1E3A5F] flex items-center justify-center text-sm">🏆</span>
+          </div>
+          <div class="mt-2 flex items-baseline gap-1.5">
+            <span id="kpiCompCount" class="text-2xl sm:text-3xl font-bold text-[#1E3A5F]">0</span>
+            <span class="text-xs text-slate-500 font-medium">개</span>
+          </div>
+          <p id="kpiCompSub" class="text-[11px] text-slate-400 mt-1 truncate">전국 0 · 도 0 · 기타 0</p>
+        </div>
+
+        <!-- 2. 등록 선수 수 -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 print-shadow-none">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-500">등록 선수 수</span>
+            <span class="w-7 h-7 rounded-lg bg-sky-50 text-sky-700 flex items-center justify-center text-sm">👥</span>
+          </div>
+          <div class="mt-2 flex items-baseline gap-1.5">
+            <span id="kpiAthleteCount" class="text-2xl sm:text-3xl font-bold text-slate-900">0</span>
+            <span class="text-xs text-slate-500 font-medium">명</span>
+          </div>
+          <p id="kpiAthleteSub" class="text-[11px] text-slate-400 mt-1 truncate">초등 0 · 중등 0</p>
+        </div>
+
+        <!-- 3. 총 출전 기록 -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 print-shadow-none">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-500">총 출전 기록</span>
+            <span class="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center text-sm">📋</span>
+          </div>
+          <div class="mt-2 flex items-baseline gap-1.5">
+            <span id="kpiResultTotal" class="text-2xl sm:text-3xl font-bold text-slate-900">0</span>
+            <span class="text-xs text-slate-500 font-medium">건</span>
+          </div>
+          <p id="kpiResultSub" class="text-[11px] text-slate-400 mt-1 truncate">리커브 0 · 컴파운드 0</p>
+        </div>
+
+        <!-- 4. 1위(금) -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-200/90 print-shadow-none">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-amber-800">1위 (금)</span>
+            <span class="text-base">🥇</span>
+          </div>
+          <div class="mt-2 flex items-baseline gap-1.5">
+            <span id="kpiGold" class="text-2xl sm:text-3xl font-bold text-amber-600">0</span>
+            <span class="text-xs text-slate-500 font-medium">건</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">우승 및 1위 입상</p>
+        </div>
+
+        <!-- 5. 2위(은) -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-300/90 print-shadow-none">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-600">2위 (은)</span>
+            <span class="text-base">🥈</span>
+          </div>
+          <div class="mt-2 flex items-baseline gap-1.5">
+            <span id="kpiSilver" class="text-2xl sm:text-3xl font-bold text-slate-600">0</span>
+            <span class="text-xs text-slate-500 font-medium">건</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">준우승 및 2위 입상</p>
+        </div>
+
+        <!-- 6. 3위(동) -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-orange-200/90 print-shadow-none">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-orange-800">3위 (동)</span>
+            <span class="text-base">🥉</span>
+          </div>
+          <div class="mt-2 flex items-baseline gap-1.5">
+            <span id="kpiBronze" class="text-2xl sm:text-3xl font-bold text-orange-600">0</span>
+            <span class="text-xs text-slate-500 font-medium">건</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">3위 메달 입상</p>
+        </div>
+
+        <!-- 7. 장려/입선 -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-blue-200/80 bg-gradient-to-br from-white to-blue-50/40 print-shadow-none">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-blue-700">장려 / 입선</span>
+            <span class="text-base">🎖</span>
+          </div>
+          <div class="mt-2 flex items-baseline gap-1.5">
+            <span id="kpiHonCount" class="text-2xl sm:text-3xl font-bold text-blue-700">0</span>
+            <span class="text-xs text-blue-600 font-medium">건</span>
+          </div>
+          <p id="kpiAwardSub" class="text-[11px] text-slate-500 mt-1">전체 입상 합계 0건</p>
+        </div>
+
+        <!-- 8. PB 달성 (Indigo accent) -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-indigo-200/90 bg-gradient-to-br from-white to-indigo-50/40 print-shadow-none">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-indigo-700">PB 달성</span>
+            <span class="text-base">⚡</span>
+          </div>
+          <div class="mt-2 flex items-baseline gap-1.5">
+            <span id="kpiPBCount" class="text-2xl sm:text-3xl font-bold text-indigo-600">0</span>
+            <span class="text-xs text-slate-500 font-medium">건 경신</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">개인최고기록 달성</p>
+        </div>
+      </div>
+
+      <!-- Chart.js 학생선수별 입상 현황 스택 막대 그래프 -->
+      <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200/80 print-shadow-none print-break-inside-avoid">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-[#1E3A5F]">학생선수별 입상 현황</h2>
+            <p class="text-xs text-slate-500 mt-0.5">선택된 부별·종별·대회규모·등수·거리 필터가 실시간 반영된 누적 입상 차트</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-3 text-xs text-slate-600">
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-amber-400 inline-block"></span>1위(금)</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-slate-400 inline-block"></span>2위(은)</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-orange-400 inline-block"></span>3위(동)</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-blue-500 inline-block"></span>장려/입선</span>
+          </div>
+        </div>
+        <div class="relative w-full h-64 sm:h-72">
+          <canvas id="athleteMedalChart"></canvas>
+        </div>
+      </div>
+
+      <!-- 선수 × 연간 대회명 매트릭스 표 -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 print-shadow-none overflow-hidden">
+        <div class="p-5 sm:p-6 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-[#1E3A5F] flex items-center gap-2 flex-wrap">
+              선수 × 연간 대회명 매트릭스 표
+              <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-brand-50 text-[#1E3A5F] border border-brand-200">클릭하여 즉시 기입·수정</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-1">빈 칸을 클릭하면 해당 선수와 대회가 자동 선택된 성과 기록 창이 열리고, 기존 기록 카드를 클릭하면 바로 수정됩니다.</p>
+          </div>
+          <div class="flex items-center gap-2 no-print">
+            <button onclick="exportMatrixCSV()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition">
+              매트릭스 CSV
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse" id="matrixTable">
+            <thead id="matrixThead" class="bg-[#1E3A5F] text-white text-xs"></thead>
+            <tbody id="matrixTbody" class="divide-y divide-slate-200 text-sm"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 탭 2: 성과 기록 관리 (상세 검색 & 목록) ==================== -->
+    <section id="tab-results" class="tab-panel hidden space-y-4">
+      <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200/80 space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-bold text-[#1E3A5F]">성과 기록 관리 및 다중 조건 검색</h2>
+            <p class="text-xs text-slate-500 mt-0.5">부별, 종별, 대회규모, 등수별, 거리별 조건과 키워드를 조합해 원하는 성과만 정밀 검색하세요.</p>
+          </div>
+          <button onclick="openResultModal()" class="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#1E3A5F] hover:bg-brand-700 text-white text-sm font-semibold shadow-sm transition no-print">
+            + 성과 기록
+          </button>
+        </div>
+
+        <!-- 다중 조건 검색·필터 패널 -->
+        <div class="bg-slate-50 rounded-2xl p-4 sm:p-5 border border-slate-200/90 space-y-3.5 no-print">
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+            <div class="md:col-span-4 relative">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+              </svg>
+              <input type="text" id="filterSearch" oninput="renderResultsTable()" placeholder="통합 검색 (대회명, 선수명, 세부거리/종목, 비고...)" class="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]" />
+            </div>
+
+            <div class="md:col-span-3">
+              <select id="filterAthlete" onchange="renderResultsTable()" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]">
+                <option value="">전체 학생선수</option>
+              </select>
+            </div>
+
+            <div class="md:col-span-3">
+              <select id="filterComp" onchange="renderResultsTable()" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]">
+                <option value="">전체 대회</option>
+              </select>
+            </div>
+
+            <div class="md:col-span-2 flex items-center justify-between md:justify-end gap-2">
+              <label class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-indigo-200 bg-white hover:bg-indigo-50 cursor-pointer select-none transition">
+                <input type="checkbox" id="filterPBOnly" onchange="renderResultsTable()" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" />
+                <span class="text-xs font-bold text-indigo-700 whitespace-nowrap">⚡ PB만 보기</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-2 border-t border-slate-200/80">
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="text-xs font-bold text-slate-600 w-16 shrink-0">부별</span>
+              <div id="resultsDivisionChips" class="flex flex-wrap gap-1.5"></div>
+            </div>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="text-xs font-bold text-slate-600 w-16 shrink-0">종별</span>
+              <div id="resultsBowChips" class="flex flex-wrap gap-1.5"></div>
+            </div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row sm:items-center gap-2 pt-2 border-t border-slate-200/80">
+            <span class="text-xs font-bold text-slate-600 w-16 shrink-0">대회규모</span>
+            <div id="resultsScaleChips" class="flex flex-wrap gap-1.5"></div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row sm:items-center gap-2 pt-2 border-t border-slate-200/80">
+            <span class="text-xs font-bold text-slate-600 w-16 shrink-0">등수별</span>
+            <div id="resultsAwardChips" class="flex flex-wrap gap-1.5"></div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row sm:items-center gap-2 pt-2 border-t border-slate-200/80">
+            <span class="text-xs font-bold text-slate-600 w-16 shrink-0">거리별</span>
+            <div id="resultsDistanceChips" class="flex flex-wrap gap-1.5"></div>
+          </div>
+
+          <div class="flex justify-end pt-1">
+            <button onclick="resetResultsFilters()" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border border-slate-300 text-xs font-semibold transition">
+              ↺ 필터 초기화
+            </button>
+          </div>
+        </div>
+
+        <!-- 검색 결과 실시간 요약 바 + 현재 검색 결과 CSV -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-[#1E3A5F]/5 border border-[#1E3A5F]/20 rounded-xl px-4 py-3">
+          <div id="resultsSummaryBar" class="text-xs sm:text-sm font-semibold text-[#1E3A5F] flex flex-wrap items-center gap-x-2 gap-y-1">
+            총 0건 | 1위(금) 0건 · 2위(은) 0건 · 3위(동) 0건 · 장려 0건 · PB 0건
+          </div>
+          <button onclick="exportFilteredResultsCSV()" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition shrink-0 no-print">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V3" />
+            </svg>
+            현재 검색 결과 CSV 내보내기
+          </button>
+        </div>
+
+        <!-- 성과 기록 테이블 -->
+        <div class="overflow-x-auto rounded-xl border border-slate-200">
+          <table class="w-full text-left border-collapse">
+            <thead class="bg-[#1E3A5F] text-white text-xs">
+              <tr>
+                <th class="px-3 py-3 font-semibold whitespace-nowrap">대회일자</th>
+                <th class="px-3 py-3 font-semibold whitespace-nowrap">대회명</th>
+                <th class="px-3 py-3 font-semibold whitespace-nowrap">대회규모</th>
+                <th class="px-3 py-3 font-semibold whitespace-nowrap">부별</th>
+                <th class="px-3 py-3 font-semibold whitespace-nowrap">종별</th>
+                <th class="px-3 py-3 font-semibold whitespace-nowrap">선수명(학년)</th>
+                <th class="px-3 py-3 font-semibold whitespace-nowrap">세부거리/부문</th>
+                <th class="px-3 py-3 font-semibold whitespace-nowrap">기록/점수</th>
+                <th class="px-3 py-3 font-semibold whitespace-nowrap">입상결과</th>
+                <th class="px-3 py-3 font-semibold whitespace-nowrap text-center">PB</th>
+                <th class="px-3 py-3 font-semibold whitespace-nowrap">비고</th>
+                <th class="px-3 py-3 font-semibold whitespace-nowrap text-right no-print">관리</th>
+              </tr>
+            </thead>
+            <tbody id="resultsTbody" class="divide-y divide-slate-200 text-sm bg-white"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 탭 3: 연간 대회 관리 ==================== -->
+    <section id="tab-competitions" class="tab-panel hidden space-y-5">
+      <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200/80 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-lg font-bold text-[#1E3A5F]">연간 대회 관리</h2>
+              <span id="compBadgeCount" class="px-2.5 py-0.5 rounded-full bg-brand-50 text-[#1E3A5F] text-xs font-bold border border-brand-200">총 0개</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5">등록된 대회는 개최월 순으로 정렬되어 매트릭스 가로축 및 검색 필터에 자동 연동됩니다.</p>
+          </div>
+          <button onclick="openCompModal()" class="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#1E3A5F] hover:bg-brand-700 text-white text-sm font-semibold shadow-sm transition no-print">
+            + 대회 추가
+          </button>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-slate-200">
+          <table class="w-full text-left border-collapse">
+            <thead class="bg-[#1E3A5F] text-white text-xs">
+              <tr>
+                <th class="px-3.5 py-3 font-semibold whitespace-nowrap">개최월 / 기간</th>
+                <th class="px-3.5 py-3 font-semibold whitespace-nowrap">대회규모</th>
+                <th class="px-3.5 py-3 font-semibold">대회명 / 장소</th>
+                <th class="px-3.5 py-3 font-semibold whitespace-nowrap">대상부별</th>
+                <th class="px-3.5 py-3 font-semibold whitespace-nowrap">운영종별</th>
+                <th class="px-3.5 py-3 font-semibold">주요 성과 요약 / 비고</th>
+                <th class="px-3.5 py-3 font-semibold text-center whitespace-nowrap">기록 수</th>
+                <th class="px-3.5 py-3 font-semibold text-right whitespace-nowrap no-print">관리</th>
+              </tr>
+            </thead>
+            <tbody id="compTbody" class="divide-y divide-slate-200 text-sm bg-white"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 탭 4: 학생선수 명단 ==================== -->
+    <section id="tab-athletes" class="tab-panel hidden space-y-5">
+      <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200/80 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-lg font-bold text-[#1E3A5F]">학생선수 명단</h2>
+              <span id="athleteBadgeCount" class="px-2.5 py-0.5 rounded-full bg-brand-50 text-[#1E3A5F] text-xs font-bold border border-brand-200">총 0명</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5">부별(초등부/중등부)과 주종목(리커브/컴파운드)을 등록하면 성과 기입 시 공식 거리가 자동 제안됩니다.</p>
+          </div>
+          <button onclick="openAthleteModal()" class="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#1E3A5F] hover:bg-brand-700 text-white text-sm font-semibold shadow-sm transition no-print">
+            + 선수 추가
+          </button>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-slate-200">
+          <table class="w-full text-left border-collapse">
+            <thead class="bg-[#1E3A5F] text-white text-xs">
+              <tr>
+                <th class="px-3.5 py-3 font-semibold whitespace-nowrap">부별</th>
+                <th class="px-3.5 py-3 font-semibold whitespace-nowrap">주종목</th>
+                <th class="px-3.5 py-3 font-semibold whitespace-nowrap">학년 / 반</th>
+                <th class="px-3.5 py-3 font-semibold whitespace-nowrap">학생선수명 (성별)</th>
+                <th class="px-3.5 py-3 font-semibold whitespace-nowrap">개인최고기록(PB)</th>
+                <th class="px-3.5 py-3 font-semibold whitespace-nowrap">누적 입상</th>
+                <th class="px-3.5 py-3 font-semibold">비고</th>
+                <th class="px-3.5 py-3 font-semibold text-right whitespace-nowrap no-print">관리</th>
+              </tr>
+            </thead>
+            <tbody id="athleteTbody" class="divide-y divide-slate-200 text-sm bg-white"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 푸터 -->
+  <footer class="bg-white border-t border-slate-200 py-4 mt-8 no-print">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-slate-500">
+      <p><strong class="text-[#1E3A5F]">ArchLog (아크로그)</strong> · 모든 데이터는 브라우저(localStorage)에 실시간 자동 저장됩니다.</p>
+      <p>UTF-8 BOM CSV 내보내기로 엑셀에서 한글 깨짐 없이 바로 열어 활용하세요.</p>
+    </div>
+  </footer>
+
+  <!-- ==================== 모달 1: 대회 추가/수정 모달 (상단 '+ 대회 추가' 버튼 연동) ==================== -->
+  <div id="compModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/60 p-4 no-print overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-slate-200 my-auto">
+      <div class="bg-[#1E3A5F] text-white px-6 py-4 flex items-center justify-between">
+        <h3 id="compModalTitle" class="text-base font-bold">🏆 새 연간 대회 추가</h3>
+        <button onclick="closeCompModal()" class="text-slate-300 hover:text-white transition p-1">✕</button>
+      </div>
+
+      <form id="compForm" onsubmit="handleSaveCompetition(event)" class="p-6 space-y-4">
+        <input type="hidden" id="editCompId" value="" />
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">대회명 <span class="text-rose-500">*</span></label>
+          <input type="text" id="compNameInput" required placeholder="예: 제55회 전국소년체육대회" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3.5">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">개최월 <span class="text-rose-500">*</span></label>
+            <select id="compMonthInput" required class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]">
+              <option value="1월">1월</option>
+              <option value="2월">2월</option>
+              <option value="3월" selected>3월</option>
+              <option value="4월">4월</option>
+              <option value="5월">5월</option>
+              <option value="6월">6월</option>
+              <option value="7월">7월</option>
+              <option value="8월">8월</option>
+              <option value="9월">9월</option>
+              <option value="10월">10월</option>
+              <option value="11월">11월</option>
+              <option value="12월">12월</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">대회규모 <span class="text-rose-500">*</span></label>
+            <select id="compScaleInput" required class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]">
+              <option value="전국대회">전국대회</option>
+              <option value="도대회">도대회</option>
+              <option value="시군대회">시군대회</option>
+              <option value="교내대회">교내대회</option>
+              <option value="기타">기타</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3.5">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">대상부별 <span class="text-rose-500">*</span></label>
+            <select id="compDivisionInput" required class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]">
+              <option value="초·중 통합">초·중 통합</option>
+              <option value="초등부">초등부</option>
+              <option value="중등부">중등부</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">운영종별 <span class="text-rose-500">*</span></label>
+            <select id="compBowInput" required class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]">
+              <option value="통합">통합 (리커브·컴파운드)</option>
+              <option value="리커브">리커브</option>
+              <option value="컴파운드">컴파운드</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">대회기간 <span class="text-rose-500">*</span></label>
+            <input type="text" id="compPeriodInput" required placeholder="예: 2026.05.23 ~ 05.26" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">개최장소</label>
+            <input type="text" id="compLocationInput" placeholder="예: 청주 김수녕양궁장" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">주요 성과 요약 / 비고</label>
+          <input type="text" id="compNoteInput" placeholder="예: 소년체전 대표 선발 겸용" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]" />
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+          <button type="button" onclick="closeCompModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold transition">취소</button>
+          <button type="submit" id="compSubmitBtn" class="px-5 py-2 rounded-xl bg-[#1E3A5F] hover:bg-brand-700 text-white text-sm font-semibold transition">대회 저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== 모달 2: 학생선수 추가/수정 모달 (상단 '+ 선수 추가' 버튼 연동) ==================== -->
+  <div id="athleteModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/60 p-4 no-print overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-slate-200 my-auto">
+      <div class="bg-[#1E3A5F] text-white px-6 py-4 flex items-center justify-between">
+        <h3 id="athleteModalTitle" class="text-base font-bold">👥 새 학생선수 추가</h3>
+        <button onclick="closeAthleteModal()" class="text-slate-300 hover:text-white transition p-1">✕</button>
+      </div>
+
+      <form id="athleteForm" onsubmit="handleSaveAthlete(event)" class="p-6 space-y-4">
+        <input type="hidden" id="editAthleteId" value="" />
+
+        <div class="grid grid-cols-2 gap-3.5">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">부별 <span class="text-rose-500">*</span></label>
+            <select id="athleteDivisionInput" onchange="syncAthleteGradeOptions()" required class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]">
+              <option value="초등부">초등부</option>
+              <option value="중등부">중등부</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">주종목 <span class="text-rose-500">*</span></label>
+            <select id="athleteBowInput" required class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]">
+              <option value="리커브">리커브</option>
+              <option value="컴파운드">컴파운드</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">학년 <span class="text-rose-500">*</span></label>
+            <select id="athleteGradeInput" required class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]"></select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">반</label>
+            <input type="text" id="athleteClassInput" placeholder="예: 2반" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">성별 <span class="text-rose-500">*</span></label>
+            <select id="athleteGenderInput" required class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]">
+              <option value="여">여</option>
+              <option value="남">남</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">학생선수명 <span class="text-rose-500">*</span></label>
+            <input type="text" id="athleteNameInput" required placeholder="예: 김도윤" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">개인최고기록(PB)</label>
+            <input type="text" id="athletePBInput" placeholder="예: 1,368점" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">비고</label>
+          <input type="text" id="athleteNoteInput" placeholder="예: 주장, 도 대표 선발" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]" />
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+          <button type="button" onclick="closeAthleteModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold transition">취소</button>
+          <button type="submit" id="athleteSubmitBtn" class="px-5 py-2 rounded-xl bg-[#1E3A5F] hover:bg-brand-700 text-white text-sm font-semibold transition">선수 저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== 모달 3: 성과 기록 기입/수정 모달 (상단 '+ 성과 기록' 버튼 연동) ==================== -->
+  <div id="resultModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/60 p-4 no-print overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-xl overflow-hidden border border-slate-200 my-auto">
+      <div class="bg-[#1E3A5F] text-white px-6 py-4 flex items-center justify-between">
+        <h3 id="resultModalTitle" class="text-base font-bold">🎯 새 성과 기록 기입</h3>
+        <button onclick="closeResultModal()" class="text-slate-300 hover:text-white transition p-1">✕</button>
+      </div>
+
+      <form id="resultForm" onsubmit="handleSaveResult(event)" class="p-6 space-y-4">
+        <input type="hidden" id="editResultId" value="" />
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">대회 선택 <span class="text-rose-500">*</span></label>
+            <select id="resCompId" onchange="onResultCompChange()" required class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]"></select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">대회일자</label>
+            <input type="text" id="resDate" placeholder="예: 2026.05.24" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">학생선수 선택 <span class="text-rose-500">*</span></label>
+          <select id="resAthleteId" onchange="onResultAthleteChange()" required class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]"></select>
+        </div>
+
+        <!-- 부별 & 종별 (선수 선택 시 자동 입력) -->
+        <div class="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">부별 <span class="text-rose-500">*</span></label>
+            <select id="resDivision" onchange="renderModalDistanceChips()" required class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]">
+              <option value="초등부">초등부</option>
+              <option value="중등부">중등부</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">종별 <span class="text-rose-500">*</span></label>
+            <select id="resBowType" onchange="renderModalDistanceChips()" required class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]">
+              <option value="리커브">리커브</option>
+              <option value="컴파운드">컴파운드</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 대한양궁협회 공식 거리 빠른 선택 + 직접 입력 -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-xs font-semibold text-slate-700">세부거리 / 부문 <span class="text-rose-500">*</span></label>
+            <span id="modalOfficialDistHint" class="text-[11px] font-bold text-indigo-700">초등부 리커브 공식 거리</span>
+          </div>
+          <div id="modalDistanceChips" class="flex flex-wrap gap-1.5 mb-2"></div>
+          <input type="text" id="resEvent" required placeholder="위 공식 거리를 클릭하거나 직접 입력 (예: 30m, 50m, 개인종합)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]" />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">기록 / 점수</label>
+            <input type="text" id="resScore" placeholder="예: 342점, 682점, 1,358점" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">입상결과 <span class="text-rose-500">*</span></label>
+            <select id="resAward" required class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]">
+              <option value="1위(금)">🥇 1위(금)</option>
+              <option value="2위(은)">🥈 2위(은)</option>
+              <option value="3위(동)">🥉 3위(동)</option>
+              <option value="장려/입선">🎖 장려/입선</option>
+              <option value="본선진출">✨ 본선진출</option>
+              <option value="참가">참가</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+          <label class="flex items-center gap-2.5 p-2.5 rounded-xl border border-indigo-200 bg-indigo-50/70 cursor-pointer select-none">
+            <input type="checkbox" id="resIsPB" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" />
+            <span class="text-xs font-bold text-indigo-800">⚡ 개인최고기록 (PB) 달성</span>
+          </label>
+          <div>
+            <input type="text" id="resNote" placeholder="비고 / 코치 피드백" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]" />
+          </div>
+        </div>
+
+        <div class="flex justify-between items-center pt-3 border-t border-slate-100">
+          <button type="button" id="resDeleteBtn" onclick="deleteResultFromModal()" class="hidden px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold transition">
+            이 기록 삭제
+          </button>
+          <div class="flex gap-2 ml-auto">
+            <button type="button" onclick="closeResultModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold transition">취소</button>
+            <button type="submit" class="px-5 py-2 rounded-xl bg-[#1E3A5F] hover:bg-brand-700 text-white text-sm font-semibold transition">저장하기</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== 모달 4: 학교/운동부 정보 수정 모달 ==================== -->
+  <div id="metaModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/60 p-4 no-print">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-200">
+      <div class="bg-[#1E3A5F] text-white px-6 py-4 flex items-center justify-between">
+        <h3 class="text-base font-bold">학년도 및 운동부 정보 설정</h3>
+        <button onclick="closeMetaModal()" class="text-slate-300 hover:text-white p-1">✕</button>
+      </div>
+      <form onsubmit="handleSaveMeta(event)" class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">학년도</label>
+          <input type="text" id="metaYearInput" required placeholder="예: 2026" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">학교명</label>
+          <input type="text" id="metaSchoolInput" required placeholder="예: 한빛초·중" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">운동부명</label>
+          <input type="text" id="metaClubInput" required placeholder="예: 양궁부" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]" />
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeMetaModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold">취소</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-[#1E3A5F] hover:bg-brand-700 text-white text-sm font-semibold">적용</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== 모달 5: 커스텀 확인 대화상자 ==================== -->
+  <div id="confirmModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/60 p-4 no-print">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden border border-slate-200 p-6">
+      <h3 id="confirmTitle" class="text-base font-bold text-slate-900">확인</h3>
+      <p id="confirmMessage" class="text-sm text-slate-600 mt-2 leading-relaxed"></p>
+      <div class="flex justify-end gap-2 mt-6">
+        <button onclick="closeConfirmModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold">취소</button>
+        <button id="confirmOkBtn" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 토스트 알림 컨테이너 -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 no-print"></div>
+
+  <!-- ==================== 애플리케이션 자바스크립트 ==================== -->
+  <script>
+    // 로컬스토리지 저장 키
+    const STORAGE_KEY = 'archlog_tracker_v4';
+
+    // 공식 양궁 필터 옵션
+    const DIVISION_OPTIONS = ['전체', '초등부', '중등부'];
+    const BOW_OPTIONS = ['전체', '리커브', '컴파운드'];
+    const SCALE_OPTIONS = ['전체', '전국대회', '도대회', '시군대회', '교내대회', '기타'];
+    const DISTANCE_OPTIONS = ['전체', '20m', '25m', '30m', '35m', '40m', '50m', '60m', '개인종합', '단체전', '혼성단체', '실내 18m'];
+
+    // 대한양궁협회 부별 × 종별 공식 거리/부문 매핑
+    const OFFICIAL_DISTANCES = {
+      '초등부': {
+        '리커브': ['20m', '25m', '30m', '35m', '개인종합', '단체전', '혼성단체', '실내 18m'],
+        '컴파운드': ['20m', '30m', '개인종합', '단체전', '혼성단체', '실내 18m']
+      },
+      '중등부': {
+        '리커브': ['30m', '40m', '50m', '60m', '개인종합', '단체전', '혼성단체', '실내 18m'],
+        '컴파운드': ['30m', '50m', '개인종합', '단체전', '혼성단체', '실내 18m']
+      }
+    };
+
+    // 부별 학년 자동 전환 옵션 (초등부: 3~6학년, 중등부: 1~3학년)
+    const GRADE_OPTIONS_BY_DIVISION = {
+      '초등부': ['6학년', '5학년', '4학년', '3학년'],
+      '중등부': ['3학년', '2학년', '1학년']
+    };
+
+    // 등수별 필터 옵션
+    const AWARD_FILTER_OPTIONS = [
+      { value: '전체', label: '전체' },
+      { value: '전체입상', label: '🏅 전체 입상' },
+      { value: '메달권', label: '🏆 메달권(1~3위)' },
+      { value: '1위(금)', label: '🥇 1위(금)' },
+      { value: '2위(은)', label: '🥈 2위(은)' },
+      { value: '3위(동)', label: '🥉 3위(동)' },
+      { value: '장려/입선', label: '🎖 장려/입선' },
+      { value: '본선진출', label: '✨ 본선진출' },
+      { value: '참가', label: '참가' }
+    ];
+
+    function monthToNumber(mStr) {
+      const n = parseInt(String(mStr || '').replace(/[^0-9]/g, ''), 10);
+      return isNaN(n) ? 99 : n;
+    }
+
+    function matchesAwardFilter(award, filterVal) {
+      if (!filterVal || filterVal === '전체') return true;
+      if (filterVal === '전체입상') return ['1위(금)', '2위(은)', '3위(동)', '장려/입선'].includes(award);
+      if (filterVal === '메달권') return ['1위(금)', '2위(은)', '3위(동)'].includes(award);
+      return award === filterVal;
+    }
+
+    function matchesCompDivision(compDiv, filterDiv) {
+      if (filterDiv === '전체') return true;
+      if (!compDiv || compDiv.includes('통합')) return true;
+      return compDiv === filterDiv;
+    }
+
+    function matchesCompBow(compBow, filterBow) {
+      if (filterBow === '전체') return true;
+      if (!compBow || compBow.includes('통합')) return true;
+      return compBow === filterBow;
+    }
+
+    let medalChartInstance = null;
+    let confirmCallback = null;
+    let currentTab = 'overview';
+
+    // 탭 1 (대시보드 & 매트릭스) 필터 상태
+    const overviewFilter = {
+      division: '전체',
+      bowType: '전체',
+      scale: '전체',
+      award: '전체',
+      distance: '전체'
+    };
+
+    // 탭 2 (성과 기록 관리) 필터 상태
+    const resultsFilter = {
+      division: '전체',
+      bowType: '전체',
+      scale: '전체',
+      award: '전체',
+      distance: '전체'
+    };
+
+    let lastFilteredResults = [];
+
+    // 초등부 + 중등부 리커브/컴파운드 예시 데이터
+    function getSampleData() {
+      return {
+        meta: {
+          year: '2026',
+          schoolName: '한빛초·중',
+          clubName: '양궁부'
+        },
+        competitions: [
+          { id: 'c1', name: '제38회 시·군 교육장배 양궁대회', month: '3월', period: '2026.03.21', scale: '시군대회', division: '초·중 통합', bowType: '통합', location: '충주 시립양궁장', note: '시즌 개막전' },
+          { id: 'c2', name: '제55회 충북 도 소년체육대회 선발전', month: '4월', period: '2026.04.18 ~ 04.19', scale: '도대회', division: '초·중 통합', bowType: '통합', location: '청주 김수녕양궁장', note: '도 대표 최종 선발' },
+          { id: 'c3', name: '제55회 전국소년체육대회', month: '5월', period: '2026.05.23 ~ 05.26', scale: '전국대회', division: '초·중 통합', bowType: '통합', location: '전국체전 양궁경기장', note: '초·중등부 전국 본선' },
+          { id: 'c4', name: '제42회 회장기 전국초등학교 양궁대회', month: '7월', period: '2026.07.17 ~ 07.19', scale: '전국대회', division: '초등부', bowType: '통합', location: '예천 진호국제양궁장', note: '초등부 전국 최대 규모' },
+          { id: 'c5', name: '제52회 한국중고양궁연맹회장기 전국대회', month: '8월', period: '2026.08.12 ~ 08.15', scale: '전국대회', division: '중등부', bowType: '통합', location: '광주 국제양궁장', note: '중등부 30~60m·컴파운드 50m' },
+          { id: 'c6', name: '2026 충북 교육감기 도내 양궁대회', month: '10월', period: '2026.10.17 ~ 10.18', scale: '도대회', division: '초·중 통합', bowType: '통합', location: '청주 김수녕양궁장', note: '하반기 결산 도대회' },
+          { id: 'c7', name: '2026 교내 동계 실내 기록평가전', month: '11월', period: '2026.11.14', scale: '교내대회', division: '초·중 통합', bowType: '통합', location: '본교 실내양궁장', note: '실내 18m 공식 라운드' }
+        ],
+        athletes: [
+          { id: 'a1', division: '초등부', bowType: '리커브', grade: '6학년', classNum: '1반', name: '김도윤', gender: '남', pb: '1,368점', note: '초등 주장, 도 대표' },
+          { id: 'a2', division: '초등부', bowType: '리커브', grade: '5학년', classNum: '3반', name: '이서연', gender: '여', pb: '1,346점', note: '25m·30m 강점' },
+          { id: 'a3', division: '초등부', bowType: '컴파운드', grade: '6학년', classNum: '2반', name: '박지후', gender: '남', pb: '688점(30m)', note: '초등 컴파운드 에이스' },
+          { id: 'a4', division: '초등부', bowType: '컴파운드', grade: '4학년', classNum: '1반', name: '최하은', gender: '여', pb: '344점(20m)', note: '유망주' },
+          { id: 'a5', division: '중등부', bowType: '리커브', grade: '3학년', classNum: '2반', name: '강민준', gender: '남', pb: '1,354점', note: '중등 주장, 60m 특기' },
+          { id: 'a6', division: '중등부', bowType: '리커브', grade: '2학년', classNum: '4반', name: '윤서아', gender: '여', pb: '1,338점', note: '40m·50m 안정적' },
+          { id: 'a7', division: '중등부', bowType: '컴파운드', grade: '3학년', classNum: '1반', name: '정태양', gender: '남', pb: '696점(50m)', note: '50m 도 신기록 보유' },
+          { id: 'a8', division: '중등부', bowType: '컴파운드', grade: '1학년', classNum: '3반', name: '한지민', gender: '여', pb: '674점(30m)', note: '중등 신입 기대주' }
+        ],
+        results: [
+          { id: 'r1', compId: 'c1', date: '2026.03.21', athleteId: 'a1', division: '초등부', bowType: '리커브', event: '35m', score: '336점', award: '1위(금)', isPB: false, note: '강풍 속 우승' },
+          { id: 'r2', compId: 'c1', date: '2026.03.21', athleteId: 'a2', division: '초등부', bowType: '리커브', event: '25m', score: '338점', award: '1위(금)', isPB: true, note: '25m 개인최고기록' },
+          { id: 'r3', compId: 'c1', date: '2026.03.21', athleteId: 'a3', division: '초등부', bowType: '컴파운드', event: '30m', score: '342점', award: '1위(금)', isPB: false, note: '컴파운드 30m 우승' },
+          { id: 'r4', compId: 'c1', date: '2026.03.21', athleteId: 'a4', division: '초등부', bowType: '컴파운드', event: '20m', score: '336점', award: '2위(은)', isPB: true, note: '첫 공식대회 은메달' },
+          { id: 'r5', compId: 'c1', date: '2026.03.21', athleteId: 'a5', division: '중등부', bowType: '리커브', event: '60m', score: '332점', award: '1위(금)', isPB: false, note: '장거리 안정 슈팅' },
+          { id: 'r6', compId: 'c1', date: '2026.03.21', athleteId: 'a7', division: '중등부', bowType: '컴파운드', event: '50m', score: '688점', award: '1위(금)', isPB: false, note: '50m 더블라운드 1위' },
+
+          { id: 'r7', compId: 'c2', date: '2026.04.18', athleteId: 'a1', division: '초등부', bowType: '리커브', event: '개인종합', score: '1,358점', award: '1위(금)', isPB: true, note: '도 대표 최종 선발' },
+          { id: 'r8', compId: 'c2', date: '2026.04.18', athleteId: 'a2', division: '초등부', bowType: '리커브', event: '30m', score: '339점', award: '2위(은)', isPB: true, note: '도 대표 선발' },
+          { id: 'r9', compId: 'c2', date: '2026.04.19', athleteId: 'a3', division: '초등부', bowType: '컴파운드', event: '30m', score: '684점', award: '1위(금)', isPB: true, note: '도내 1위 통과' },
+          { id: 'r10', compId: 'c2', date: '2026.04.19', athleteId: 'a5', division: '중등부', bowType: '리커브', event: '50m', score: '334점', award: '1위(금)', isPB: true, note: '중등 도 대표 선발' },
+          { id: 'r11', compId: 'c2', date: '2026.04.19', athleteId: 'a6', division: '중등부', bowType: '리커브', event: '40m', score: '340점', award: '2위(은)', isPB: true, note: '중등 도 대표 선발' },
+          { id: 'r12', compId: 'c2', date: '2026.04.19', athleteId: 'a7', division: '중등부', bowType: '컴파운드', event: '50m', score: '692점', award: '1위(금)', isPB: true, note: '도 신기록 근접' },
+          { id: 'r13', compId: 'c2', date: '2026.04.19', athleteId: 'a8', division: '중등부', bowType: '컴파운드', event: '30m', score: '670점', award: '3위(동)', isPB: true, note: '1학년 첫 도대회 메달' },
+
+          { id: 'r14', compId: 'c3', date: '2026.05.24', athleteId: 'a1', division: '초등부', bowType: '리커브', event: '35m', score: '338점', award: '2위(은)', isPB: false, note: '전국 개인 은메달' },
+          { id: 'r15', compId: 'c3', date: '2026.05.25', athleteId: 'a1', division: '초등부', bowType: '리커브', event: '단체전', score: '3,982점', award: '1위(금)', isPB: false, note: '충북 연합팀 전국 우승' },
+          { id: 'r16', compId: 'c3', date: '2026.05.24', athleteId: 'a2', division: '초등부', bowType: '리커브', event: '20m', score: '348점', award: '3위(동)', isPB: true, note: '전국 20m 동메달' },
+          { id: 'r17', compId: 'c3', date: '2026.05.25', athleteId: 'a5', division: '중등부', bowType: '리커브', event: '60m', score: '335점', award: '2위(은)', isPB: true, note: '중등부 전국 60m 은메달' },
+          { id: 'r18', compId: 'c3', date: '2026.05.26', athleteId: 'a6', division: '중등부', bowType: '리커브', event: '혼성단체', score: '1,342점', award: '1위(금)', isPB: false, note: '중등 혼성단체 금메달' },
+          { id: 'r19', compId: 'c3', date: '2026.05.25', athleteId: 'a7', division: '중등부', bowType: '컴파운드', event: '50m', score: '696점', award: '1위(금)', isPB: true, note: '전국 50m 개인 금메달' },
+
+          { id: 'r20', compId: 'c4', date: '2026.07.18', athleteId: 'a1', division: '초등부', bowType: '리커브', event: '개인종합', score: '1,368점', award: '1위(금)', isPB: true, note: '전국 개인종합 우승' },
+          { id: 'r21', compId: 'c4', date: '2026.07.18', athleteId: 'a2', division: '초등부', bowType: '리커브', event: '30m', score: '341점', award: '장려/입선', isPB: true, note: '전국 5위 입선' },
+          { id: 'r22', compId: 'c4', date: '2026.07.19', athleteId: 'a3', division: '초등부', bowType: '컴파운드', event: '30m', score: '688점', award: '2위(은)', isPB: true, note: '초등 컴파운드 전국 2위' },
+          { id: 'r23', compId: 'c4', date: '2026.07.19', athleteId: 'a4', division: '초등부', bowType: '컴파운드', event: '20m', score: '344점', award: '본선진출', isPB: true, note: '4학년부 8강 진출' },
+
+          { id: 'r24', compId: 'c5', date: '2026.08.13', athleteId: 'a5', division: '중등부', bowType: '리커브', event: '개인종합', score: '1,354점', award: '1위(금)', isPB: true, note: '중등 개인종합 전국 1위' },
+          { id: 'r25', compId: 'c5', date: '2026.08.14', athleteId: 'a6', division: '중등부', bowType: '리커브', event: '30m', score: '347점', award: '3위(동)', isPB: true, note: '30m 전국 동메달' },
+          { id: 'r26', compId: 'c5', date: '2026.08.15', athleteId: 'a7', division: '중등부', bowType: '컴파운드', event: '단체전', score: '2,048점', award: '2위(은)', isPB: false, note: '컴파운드 단체 준우승' },
+          { id: 'r27', compId: 'c5', date: '2026.08.14', athleteId: 'a8', division: '중등부', bowType: '컴파운드', event: '50m', score: '662점', award: '장려/입선', isPB: true, note: '첫 50m 전국 입선' },
+
+          { id: 'r28', compId: 'c6', date: '2026.10.17', athleteId: 'a2', division: '초등부', bowType: '리커브', event: '개인종합', score: '1,346점', award: '1위(금)', isPB: true, note: '첫 도대회 개인종합 우승' },
+          { id: 'r29', compId: 'c6', date: '2026.10.17', athleteId: 'a4', division: '초등부', bowType: '컴파운드', event: '20m', score: '342점', award: '1위(금)', isPB: false, note: '초등 20m 도내 1위' },
+          { id: 'r30', compId: 'c6', date: '2026.10.18', athleteId: 'a6', division: '중등부', bowType: '리커브', event: '50m', score: '331점', award: '1위(금)', isPB: true, note: '50m 도내 1위' },
+          { id: 'r31', compId: 'c6', date: '2026.10.18', athleteId: 'a8', division: '중등부', bowType: '컴파운드', event: '30m', score: '674점', award: '2위(은)', isPB: true, note: '30m 개인최고 경신' },
+
+          { id: 'r32', compId: 'c7', date: '2026.11.14', athleteId: 'a3', division: '초등부', bowType: '컴파운드', event: '실내 18m', score: '574점', award: '1위(금)', isPB: true, note: '실내 18m 초등 최고점' },
+          { id: 'r33', compId: 'c7', date: '2026.11.14', athleteId: 'a5', division: '중등부', bowType: '리커브', event: '실내 18m', score: '582점', award: '1위(금)', isPB: true, note: '동계 훈련 점검 완료' },
+          { id: 'r34', compId: 'c7', date: '2026.11.14', athleteId: 'a8', division: '중등부', bowType: '컴파운드', event: '실내 18m', score: '568점', award: '참가', isPB: false, note: '자세 교정 집중' }
+        ]
+      };
+    }
+
+    function getEmptyData() {
+      return {
+        meta: { year: '2026', schoolName: 'OO초·중학교', clubName: '양궁부' },
+        competitions: [],
+        athletes: [],
+        results: []
+      };
+    }
+
+    let appState = loadState();
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.competitions) && Array.isArray(parsed.athletes) && Array.isArray(parsed.results)) {
+            return parsed;
+          }
+        }
+      } catch (e) {
+        console.error('로컬스토리지 파싱 오류:', e);
+      }
+      return getSampleData();
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      } catch (e) {
+        console.error('로컬스토리지 저장 오류:', e);
+        showToast('브라우저 저장 공간이 부족합니다.', 'error');
+      }
+    }
+
+    function uid(prefix) {
+      return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+    }
+
+    function escapeHTML(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // CSV 드롭다운 제어
+    function toggleCsvMenu(e) {
+      e.stopPropagation();
+      document.getElementById('csvDropdownMenu').classList.toggle('hidden');
+    }
+
+    function closeCsvMenu() {
+      document.getElementById('csvDropdownMenu').classList.add('hidden');
+    }
+
+    document.addEventListener('click', (e) => {
+      const wrap = document.getElementById('csvDropdownWrap');
+      if (wrap && !wrap.contains(e.target)) closeCsvMenu();
+    });
+
+    // 배지 헬퍼
+    function getDivisionBadgeHTML(division, compact = false) {
+      const cls = compact ? 'text-[10px] px-1.5 py-0.5' : 'text-[11px] px-2 py-0.5';
+      if (division === '초등부') {
+        return `<span class="inline-flex items-center font-bold rounded-md bg-sky-100 text-sky-700 border border-sky-200 whitespace-nowrap ${cls}">초등부</span>`;
+      }
+      if (division === '중등부') {
+        return `<span class="inline-flex items-center font-bold rounded-md bg-violet-100 text-violet-700 border border-violet-200 whitespace-nowrap ${cls}">중등부</span>`;
+      }
+      return `<span class="inline-flex items-center font-semibold rounded-md bg-slate-100 text-slate-600 border border-slate-200 whitespace-nowrap ${cls}">${escapeHTML(division || '초·중 통합')}</span>`;
+    }
+
+    function getBowBadgeHTML(bowType, compact = false) {
+      const cls = compact ? 'text-[10px] px-1.5 py-0.5' : 'text-[11px] px-2 py-0.5';
+      if (bowType === '리커브') {
+        return `<span class="inline-flex items-center font-bold rounded-md bg-indigo-100 text-indigo-700 border border-indigo-200 whitespace-nowrap ${cls}">리커브</span>`;
+      }
+      if (bowType === '컴파운드') {
+        return `<span class="inline-flex items-center font-bold rounded-md bg-emerald-100 text-emerald-700 border border-emerald-200 whitespace-nowrap ${cls}">컴파운드</span>`;
+      }
+      return `<span class="inline-flex items-center font-semibold rounded-md bg-slate-100 text-slate-600 border border-slate-200 whitespace-nowrap ${cls}">${escapeHTML(bowType || '통합')}</span>`;
+    }
+
+    function getAwardBadgeHTML(award, compact = false) {
+      const sizeCls = compact ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2.5 py-1';
+      switch (award) {
+        case '1위(금)':
+          return `<span class="inline-flex items-center gap-0.5 font-bold rounded-full bg-amber-100 text-amber-800 border border-amber-300 whitespace-nowrap ${sizeCls}">🥇 1위(금)</span>`;
+        case '2위(은)':
+          return `<span class="inline-flex items-center gap-0.5 font-bold rounded-full bg-slate-200 text-slate-700 border border-slate-300 whitespace-nowrap ${sizeCls}">🥈 2위(은)</span>`;
+        case '3위(동)':
+          return `<span class="inline-flex items-center gap-0.5 font-bold rounded-full bg-orange-100 text-orange-800 border border-orange-300 whitespace-nowrap ${sizeCls}">🥉 3위(동)</span>`;
+        case '장려/입선':
+          return `<span class="inline-flex items-center gap-0.5 font-semibold rounded-full bg-blue-100 text-blue-800 border border-blue-200 whitespace-nowrap ${sizeCls}">🎖 장려/입선</span>`;
+        case '본선진출':
+          return `<span class="inline-flex items-center gap-0.5 font-semibold rounded-full bg-sky-50 text-sky-700 border border-sky-200 whitespace-nowrap ${sizeCls}">✨ 본선진출</span>`;
+        default:
+          return `<span class="inline-flex items-center gap-0.5 font-medium rounded-full bg-slate-100 text-slate-600 border border-slate-200 whitespace-nowrap ${sizeCls}">참가</span>`;
+      }
+    }
+
+    function getScaleBadgeHTML(scale) {
+      switch (scale) {
+        case '전국대회':
+          return `<span class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-100 text-rose-700 border border-rose-200 whitespace-nowrap">전국대회</span>`;
+        case '도대회':
+          return `<span class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-100 text-blue-700 border border-blue-200 whitespace-nowrap">도대회</span>`;
+        case '시군대회':
+          return `<span class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-teal-100 text-teal-700 border border-teal-200 whitespace-nowrap">시군대회</span>`;
+        case '교내대회':
+          return `<span class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200 whitespace-nowrap">교내대회</span>`;
+        default:
+          return `<span class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-600 border border-slate-200 whitespace-nowrap">기타</span>`;
+      }
+    }
+
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      const bg = type === 'error' ? 'bg-rose-600' : type === 'info' ? 'bg-[#1E3A5F]' : 'bg-emerald-600';
+      toast.className = `${bg} text-white px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 transition-all duration-300 opacity-0 translate-y-2`;
+      toast.innerHTML = `<span>${escapeHTML(message)}</span>`;
+      container.appendChild(toast);
+      requestAnimationFrame(() => toast.classList.remove('opacity-0', 'translate-y-2'));
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 2600);
+    }
+
+    function switchTab(tabName) {
+      currentTab = tabName;
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+      const activePanel = document.getElementById(`tab-${tabName}`);
+      if (activePanel) activePanel.classList.remove('hidden');
+
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        if (btn.dataset.tab === tabName) {
+          btn.classList.add('bg-[#F8FAFC]', 'text-[#1E3A5F]', 'border-amber-400');
+          btn.classList.remove('text-slate-200', 'border-transparent', 'hover:text-white', 'hover:bg-white/10');
+        } else {
+          btn.classList.remove('bg-[#F8FAFC]', 'text-[#1E3A5F]', 'border-amber-400');
+          btn.classList.add('text-slate-200', 'border-transparent', 'hover:text-white', 'hover:bg-white/10');
+        }
+      });
+
+      if (tabName === 'overview') renderOverview();
+    }
+
+    // ==================== 5대 필터 칩 렌더링 ====================
+
+    function makeChipHTML(label, isActive, onClickFn, activeColorClass = 'bg-[#1E3A5F] text-white border-[#1E3A5F]') {
+      const cls = isActive
+        ? `${activeColorClass} shadow-xs`
+        : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100';
+      return `<button type="button" onclick="${onClickFn}" class="filter-chip px-2.5 py-1 rounded-full text-xs font-semibold border ${cls}">${label}</button>`;
+    }
+
+    function renderFilterChips() {
+      // 탭 1
+      document.getElementById('overviewDivisionChips').innerHTML = DIVISION_OPTIONS.map(opt => {
+        const activeColor = opt === '초등부' ? 'bg-sky-600 text-white border-sky-600' : opt === '중등부' ? 'bg-violet-600 text-white border-violet-600' : 'bg-[#1E3A5F] text-white border-[#1E3A5F]';
+        return makeChipHTML(opt, overviewFilter.division === opt, `setOverviewFilter('division','${opt}')`, activeColor);
+      }).join('');
+
+      document.getElementById('overviewBowChips').innerHTML = BOW_OPTIONS.map(opt => {
+        const activeColor = opt === '리커브' ? 'bg-indigo-600 text-white border-indigo-600' : opt === '컴파운드' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-[#1E3A5F] text-white border-[#1E3A5F]';
+        return makeChipHTML(opt, overviewFilter.bowType === opt, `setOverviewFilter('bowType','${opt}')`, activeColor);
+      }).join('');
+
+      document.getElementById('overviewScaleChips').innerHTML = SCALE_OPTIONS.map(opt =>
+        makeChipHTML(opt, overviewFilter.scale === opt, `setOverviewFilter('scale','${opt}')`)
+      ).join('');
+
+      document.getElementById('overviewAwardChips').innerHTML = AWARD_FILTER_OPTIONS.map(opt =>
+        makeChipHTML(opt.label, overviewFilter.award === opt.value, `setOverviewFilter('award','${opt.value}')`)
+      ).join('');
+
+      document.getElementById('overviewDistanceChips').innerHTML = DISTANCE_OPTIONS.map(opt =>
+        makeChipHTML(opt, overviewFilter.distance === opt, `setOverviewFilter('distance','${opt}')`)
+      ).join('');
+
+      // 탭 2
+      document.getElementById('resultsDivisionChips').innerHTML = DIVISION_OPTIONS.map(opt => {
+        const activeColor = opt === '초등부' ? 'bg-sky-600 text-white border-sky-600' : opt === '중등부' ? 'bg-violet-600 text-white border-violet-600' : 'bg-[#1E3A5F] text-white border-[#1E3A5F]';
+        return makeChipHTML(opt, resultsFilter.division === opt, `setResultsFilter('division','${opt}')`, activeColor);
+      }).join('');
+
+      document.getElementById('resultsBowChips').innerHTML = BOW_OPTIONS.map(opt => {
+        const activeColor = opt === '리커브' ? 'bg-indigo-600 text-white border-indigo-600' : opt === '컴파운드' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-[#1E3A5F] text-white border-[#1E3A5F]';
+        return makeChipHTML(opt, resultsFilter.bowType === opt, `setResultsFilter('bowType','${opt}')`, activeColor);
+      }).join('');
+
+      document.getElementById('resultsScaleChips').innerHTML = SCALE_OPTIONS.map(opt =>
+        makeChipHTML(opt, resultsFilter.scale === opt, `setResultsFilter('scale','${opt}')`)
+      ).join('');
+
+      document.getElementById('resultsAwardChips').innerHTML = AWARD_FILTER_OPTIONS.map(opt =>
+        makeChipHTML(opt.label, resultsFilter.award === opt.value, `setResultsFilter('award','${opt.value}')`)
+      ).join('');
+
+      document.getElementById('resultsDistanceChips').innerHTML = DISTANCE_OPTIONS.map(opt =>
+        makeChipHTML(opt, resultsFilter.distance === opt, `setResultsFilter('distance','${opt}')`)
+      ).join('');
+    }
+
+    function setOverviewFilter(type, value) {
+      overviewFilter[type] = value;
+      renderFilterChips();
+      renderOverview();
+    }
+
+    function resetOverviewFilters() {
+      overviewFilter.division = '전체';
+      overviewFilter.bowType = '전체';
+      overviewFilter.scale = '전체';
+      overviewFilter.award = '전체';
+      overviewFilter.distance = '전체';
+      renderFilterChips();
+      renderOverview();
+    }
+
+    function setResultsFilter(type, value) {
+      resultsFilter[type] = value;
+      renderFilterChips();
+      renderResultsTable();
+    }
+
+    function resetResultsFilters() {
+      resultsFilter.division = '전체';
+      resultsFilter.bowType = '전체';
+      resultsFilter.scale = '전체';
+      resultsFilter.award = '전체';
+      resultsFilter.distance = '전체';
+      document.getElementById('filterSearch').value = '';
+      document.getElementById('filterAthlete').value = '';
+      document.getElementById('filterComp').value = '';
+      document.getElementById('filterPBOnly').checked = false;
+      renderFilterChips();
+      renderResultsTable();
+    }
+
+    // ==================== 전체 렌더링 ====================
+
+    function renderAll() {
+      renderHeader();
+      renderFilterChips();
+      renderOverview();
+      populateFilterDropdowns();
+      renderResultsTable();
+      renderCompetitionsTable();
+      renderAthletesTable();
+    }
+
+    function renderHeader() {
+      const { year, schoolName, clubName } = appState.meta;
+      const titleText = `${year}학년도 ${schoolName} ${clubName}`;
+      document.getElementById('headerTitle').textContent = titleText;
+      document.getElementById('printTitle').textContent = `${titleText} 연간 성과 보고서`;
+      const today = new Date();
+      document.getElementById('printDate').textContent = `출력일: ${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
+    }
+
+    // ==================== 탭 1: 대시보드 & 매트릭스 ====================
+
+    function getOverviewFilteredData() {
+      const filteredComps = [...appState.competitions]
+        .filter(c => {
+          if (overviewFilter.scale !== '전체' && c.scale !== overviewFilter.scale) return false;
+          if (!matchesCompDivision(c.division, overviewFilter.division)) return false;
+          if (!matchesCompBow(c.bowType, overviewFilter.bowType)) return false;
+          return true;
+        })
+        .sort((a, b) => monthToNumber(a.month) - monthToNumber(b.month) || (a.period || '').localeCompare(b.period || ''));
+
+      const compIdSet = new Set(filteredComps.map(c => c.id));
+
+      const filteredAthletes = appState.athletes.filter(a => {
+        if (overviewFilter.division !== '전체' && a.division !== overviewFilter.division) return false;
+        if (overviewFilter.bowType !== '전체' && a.bowType !== overviewFilter.bowType) return false;
+        return true;
+      });
+      const athleteMap = new Map(appState.athletes.map(a => [a.id, a]));
+
+      const filteredResults = appState.results.filter(r => {
+        if (!compIdSet.has(r.compId)) return false;
+        const ath = athleteMap.get(r.athleteId);
+        const rDiv = r.division || (ath ? ath.division : '');
+        const rBow = r.bowType || (ath ? ath.bowType : '');
+        if (overviewFilter.division !== '전체' && rDiv !== overviewFilter.division) return false;
+        if (overviewFilter.bowType !== '전체' && rBow !== overviewFilter.bowType) return false;
+        if (!matchesAwardFilter(r.award, overviewFilter.award)) return false;
+        if (overviewFilter.distance !== '전체' && r.event !== overviewFilter.distance) return false;
+        return true;
+      });
+
+      return { filteredComps, filteredAthletes, filteredResults };
+    }
+
+    function renderOverview() {
+      const { filteredComps, filteredAthletes, filteredResults } = getOverviewFilteredData();
+
+      const activeTags = [];
+      if (overviewFilter.division !== '전체') activeTags.push(overviewFilter.division);
+      if (overviewFilter.bowType !== '전체') activeTags.push(overviewFilter.bowType);
+      if (overviewFilter.scale !== '전체') activeTags.push(overviewFilter.scale);
+      if (overviewFilter.award !== '전체') {
+        const obj = AWARD_FILTER_OPTIONS.find(o => o.value === overviewFilter.award);
+        activeTags.push(obj ? obj.label.replace(/^[^\s]+\s/, '') : overviewFilter.award);
+      }
+      if (overviewFilter.distance !== '전체') activeTags.push(overviewFilter.distance);
+
+      document.getElementById('overviewFilterBadge').textContent = activeTags.length === 0
+        ? '전체 보기'
+        : `필터 ${activeTags.length}개 적용 · ${activeTags.join(' · ')}`;
+      document.getElementById('printFilterSummary').textContent = `조회 조건: ${activeTags.length ? activeTags.join(' / ') : '전체(초·중등부 · 리커브·컴파운드 · 전체 거리)'}`;
+
+      // 8개 KPI 업데이트
+      document.getElementById('kpiCompCount').textContent = filteredComps.length;
+      const natCnt = filteredComps.filter(c => c.scale === '전국대회').length;
+      const doCnt = filteredComps.filter(c => c.scale === '도대회').length;
+      document.getElementById('kpiCompSub').textContent = `전국 ${natCnt} · 도 ${doCnt} · 기타 ${filteredComps.length - natCnt - doCnt}`;
+
+      document.getElementById('kpiAthleteCount').textContent = filteredAthletes.length;
+      const elemCnt = filteredAthletes.filter(a => a.division === '초등부').length;
+      const midCnt = filteredAthletes.filter(a => a.division === '중등부').length;
+      document.getElementById('kpiAthleteSub').textContent = `초등부 ${elemCnt}명 · 중등부 ${midCnt}명`;
+
+      document.getElementById('kpiResultTotal').textContent = filteredResults.length;
+      const recCnt = filteredResults.filter(r => r.bowType === '리커브').length;
+      const cmpCnt = filteredResults.filter(r => r.bowType === '컴파운드').length;
+      document.getElementById('kpiResultSub').textContent = `리커브 ${recCnt}건 · 컴파운드 ${cmpCnt}건`;
+
+      const gold = filteredResults.filter(r => r.award === '1위(금)').length;
+      const silver = filteredResults.filter(r => r.award === '2위(은)').length;
+      const bronze = filteredResults.filter(r => r.award === '3위(동)').length;
+      const hon = filteredResults.filter(r => r.award === '장려/입선').length;
+      const medalSum = gold + silver + bronze;
+      const awardSum = medalSum + hon;
+      const pbCount = filteredResults.filter(r => r.isPB).length;
+
+      document.getElementById('kpiGold').textContent = gold;
+      document.getElementById('kpiSilver').textContent = silver;
+      document.getElementById('kpiBronze').textContent = bronze;
+      document.getElementById('kpiHonCount').textContent = hon;
+      document.getElementById('kpiAwardSub').textContent = `전체 입상 합계 ${awardSum}건 (메달 ${medalSum})`;
+      document.getElementById('kpiPBCount').textContent = pbCount;
+
+      renderChart(filteredAthletes, filteredResults);
+      renderMatrix(filteredComps, filteredAthletes, filteredResults);
+    }
+
+    function renderChart(filteredAthletes, filteredResults) {
+      const canvas = document.getElementById('athleteMedalChart');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+
+      if (medalChartInstance) {
+        medalChartInstance.destroy();
+        medalChartInstance = null;
+      }
+
+      const labels = filteredAthletes.length > 0
+        ? filteredAthletes.map(a => `${a.name} (${a.division === '초등부' ? '초' : '중'}·${a.bowType === '리커브' ? '리' : '컴'})`)
+        : ['등록된 선수 없음'];
+
+      const goldData = filteredAthletes.map(a => filteredResults.filter(r => r.athleteId === a.id && r.award === '1위(금)').length);
+      const silverData = filteredAthletes.map(a => filteredResults.filter(r => r.athleteId === a.id && r.award === '2위(은)').length);
+      const bronzeData = filteredAthletes.map(a => filteredResults.filter(r => r.athleteId === a.id && r.award === '3위(동)').length);
+      const honData = filteredAthletes.map(a => filteredResults.filter(r => r.athleteId === a.id && r.award === '장려/입선').length);
+
+      medalChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: '1위(금)', data: filteredAthletes.length ? goldData : [0], backgroundColor: '#f59e0b', borderRadius: 4, maxBarThickness: 40 },
+            { label: '2위(은)', data: filteredAthletes.length ? silverData : [0], backgroundColor: '#94a3b8', borderRadius: 4, maxBarThickness: 40 },
+            { label: '3위(동)', data: filteredAthletes.length ? bronzeData : [0], backgroundColor: '#fb923c', borderRadius: 4, maxBarThickness: 40 },
+            { label: '장려/입선', data: filteredAthletes.length ? honData : [0], backgroundColor: '#3b82f6', borderRadius: 4, maxBarThickness: 40 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#1E3A5F',
+              padding: 10,
+              titleFont: { family: "Pretendard, 'Malgun Gothic', sans-serif", size: 13 },
+              bodyFont: { family: "Pretendard, 'Malgun Gothic', sans-serif", size: 12 },
+              callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y}건` }
+            }
+          },
+          scales: {
+            x: {
+              stacked: true,
+              grid: { display: false },
+              ticks: { font: { family: "Pretendard, 'Malgun Gothic', sans-serif", size: 11, weight: '600' }, color: '#334155' }
+            },
+            y: {
+              stacked: true,
+              beginAtZero: true,
+              ticks: { stepSize: 1, precision: 0, color: '#64748b' },
+              grid: { color: '#e2e8f0', borderDash: [4, 4] }
+            }
+          }
+        }
+      });
+    }
+
+    function renderMatrix(filteredComps, filteredAthletes, filteredResults) {
+      const thead = document.getElementById('matrixThead');
+      const tbody = document.getElementById('matrixTbody');
+
+      // 대회나 선수가 아예 없는 경우 친절한 빈 상태 + 퀵 추가 버튼 제공
+      if (appState.athletes.length === 0 || appState.competitions.length === 0) {
+        thead.innerHTML = `<tr><th class="px-4 py-3 text-center">연간 성과 매트릭스 안내</th></tr>`;
+        tbody.innerHTML = `
+          <tr>
+            <td class="px-6 py-12 text-center space-y-3">
+              <p class="text-slate-600 font-semibold">매트릭스 표를 구성하려면 연간 대회와 학생선수를 먼저 등록해 주세요.</p>
+              <div class="flex flex-wrap justify-center gap-2 no-print">
+                <button onclick="openCompModal()" class="px-4 py-2 rounded-xl bg-[#1E3A5F] hover:bg-brand-700 text-white text-xs font-bold transition">+ 대회 추가</button>
+                <button onclick="openAthleteModal()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition">+ 선수 추가</button>
+              </div>
+            </td>
+          </tr>`;
+        return;
+      }
+
+      let headerHTML = `<tr>
+        <th class="sticky-col bg-[#152a46] px-4 py-3.5 font-semibold border-r border-white/15 min-w-[165px]">
+          학생선수 (부별·종별)
+        </th>`;
+
+      if (filteredComps.length === 0) {
+        headerHTML += `<th class="px-4 py-3.5 text-center text-slate-300 font-normal">선택한 필터 조건에 해당하는 대회가 없습니다.</th>`;
+      } else {
+        filteredComps.forEach(comp => {
+          headerHTML += `
+            <th class="px-3 py-3 font-semibold border-r border-white/15 min-w-[175px] align-top">
+              <div class="flex items-center justify-between gap-1 mb-1">
+                ${getScaleBadgeHTML(comp.scale)}
+                <span class="text-[11px] font-medium text-slate-300">${escapeHTML(comp.month)}</span>
+              </div>
+              <div class="text-xs font-bold text-white leading-snug">${escapeHTML(comp.name)}</div>
+              <div class="flex flex-wrap gap-1 mt-1">
+                <span class="text-[10px] px-1.5 py-0.2 rounded bg-white/15 text-slate-100 font-normal">${escapeHTML(comp.division || '초·중 통합')}</span>
+                <span class="text-[10px] px-1.5 py-0.2 rounded bg-white/15 text-slate-100 font-normal">${escapeHTML(comp.bowType || '통합')}</span>
+              </div>
+            </th>`;
+        });
+        headerHTML += `<th class="px-3 py-3.5 font-semibold text-center bg-[#152a46] min-w-[115px]">입상 요약</th>`;
+      }
+      headerHTML += `</tr>`;
+      thead.innerHTML = headerHTML;
+
+      if (filteredAthletes.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${Math.max(filteredComps.length + 2, 2)}" class="px-6 py-12 text-center text-slate-400">선택한 필터 조건에 해당하는 학생선수가 없습니다.</td></tr>`;
+        return;
+      }
+
+      let bodyHTML = '';
+      filteredAthletes.forEach(athlete => {
+        const athRes = filteredResults.filter(r => r.athleteId === athlete.id);
+        const g = athRes.filter(r => r.award === '1위(금)').length;
+        const s = athRes.filter(r => r.award === '2위(은)').length;
+        const b = athRes.filter(r => r.award === '3위(동)').length;
+        const h = athRes.filter(r => r.award === '장려/입선').length;
+        const pb = athRes.filter(r => r.isPB).length;
+
+        bodyHTML += `<tr class="hover:bg-slate-50/80 transition">`;
+        bodyHTML += `
+          <td class="sticky-col bg-white px-3.5 py-3 border-r border-slate-200 align-top">
+            <div class="font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
+              <span>${escapeHTML(athlete.name)}</span>
+              <span class="text-[11px] font-medium text-slate-500">${escapeHTML(athlete.grade)} ${escapeHTML(athlete.classNum || '')}</span>
+            </div>
+            <div class="flex items-center gap-1 mt-1.5 flex-wrap">
+              ${getDivisionBadgeHTML(athlete.division, true)}
+              ${getBowBadgeHTML(athlete.bowType, true)}
+            </div>
+          </td>`;
+
+        if (filteredComps.length === 0) {
+          bodyHTML += `<td class="px-4 py-3 text-center text-slate-300">-</td>`;
+        } else {
+          filteredComps.forEach(comp => {
+            const cellRes = filteredResults.filter(r => r.athleteId === athlete.id && r.compId === comp.id);
+            if (cellRes.length === 0) {
+              bodyHTML += `
+                <td onclick="openResultModal(null, '${comp.id}', '${athlete.id}')" class="px-3 py-3 border-r border-slate-100 text-center align-middle cursor-pointer group hover:bg-brand-50/60 transition" title="클릭하여 성과 기입">
+                  <span class="text-slate-300 group-hover:text-[#1E3A5F] text-xs font-medium">+ 기록</span>
+                </td>`;
+            } else {
+              const itemsHTML = cellRes.map(r => `
+                <div onclick="event.stopPropagation(); openResultModal('${r.id}')" class="p-2 rounded-lg bg-slate-50 hover:bg-amber-50/70 border border-slate-200/90 hover:border-amber-300 cursor-pointer transition text-left space-y-1">
+                  <div class="flex items-center justify-between gap-1 flex-wrap">
+                    <span class="text-[11px] font-bold px-1.5 py-0.5 rounded bg-[#1E3A5F]/10 text-[#1E3A5F]">${escapeHTML(r.event)}</span>
+                    ${getAwardBadgeHTML(r.award, true)}
+                  </div>
+                  <div class="flex items-center justify-between gap-1 text-xs">
+                    <span class="font-semibold text-slate-700">${escapeHTML(r.score || '-')}</span>
+                    ${r.isPB ? `<span class="text-[10px] font-bold px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-700 border border-indigo-200">⚡PB</span>` : ''}
+                  </div>
+                </div>
+              `).join('');
+
+              bodyHTML += `
+                <td onclick="openResultModal(null, '${comp.id}', '${athlete.id}')" class="px-2.5 py-2.5 border-r border-slate-100 align-top cursor-pointer hover:bg-slate-50/60 transition">
+                  <div class="space-y-1.5">${itemsHTML}</div>
+                </td>`;
+            }
+          });
+
+          bodyHTML += `
+            <td class="px-3 py-3 text-center align-middle bg-slate-50/70">
+              <div class="flex flex-wrap justify-center gap-1 text-[11px] font-bold">
+                ${g > 0 ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">금${g}</span>` : ''}
+                ${s > 0 ? `<span class="px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">은${s}</span>` : ''}
+                ${b > 0 ? `<span class="px-1.5 py-0.5 rounded bg-orange-100 text-orange-800">동${b}</span>` : ''}
+                ${h > 0 ? `<span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">장${h}</span>` : ''}
+                ${(g + s + b + h === 0) ? `<span class="text-slate-400 font-normal">-</span>` : ''}
+              </div>
+              ${pb > 0 ? `<div class="text-[11px] text-indigo-600 font-bold mt-1">⚡ PB ${pb}회</div>` : ''}
+            </td>`;
+        }
+        bodyHTML += `</tr>`;
+      });
+
+      tbody.innerHTML = bodyHTML;
+    }
+
+    // ==================== 탭 2: 성과 기록 관리 ====================
+
+    function populateFilterDropdowns() {
+      const compSelect = document.getElementById('filterComp');
+      const athleteSelect = document.getElementById('filterAthlete');
+      const prevComp = compSelect.value;
+      const prevAthlete = athleteSelect.value;
+
+      const sortedComps = [...appState.competitions].sort((a, b) => monthToNumber(a.month) - monthToNumber(b.month));
+      compSelect.innerHTML = `<option value="">전체 대회</option>` +
+        sortedComps.map(c => `<option value="${c.id}">[${c.scale}] ${escapeHTML(c.name)} (${escapeHTML(c.month)})</option>`).join('');
+      compSelect.value = prevComp;
+
+      athleteSelect.innerHTML = `<option value="">전체 학생선수</option>` +
+        appState.athletes.map(a => `<option value="${a.id}">[${a.division}/${a.bowType}] ${escapeHTML(a.name)} (${escapeHTML(a.grade)})</option>`).join('');
+      athleteSelect.value = prevAthlete;
+    }
+
+    function renderResultsTable() {
+      const tbody = document.getElementById('resultsTbody');
+      const search = document.getElementById('filterSearch').value.trim().toLowerCase();
+      const compFilter = document.getElementById('filterComp').value;
+      const athleteFilter = document.getElementById('filterAthlete').value;
+      const pbOnly = document.getElementById('filterPBOnly').checked;
+
+      const enriched = appState.results.map(r => {
+        const comp = appState.competitions.find(c => c.id === r.compId) || { name: '(삭제된 대회)', month: '-', period: '-', scale: '기타', location: '' };
+        const athlete = appState.athletes.find(a => a.id === r.athleteId) || { name: '(삭제된 선수)', division: '초등부', bowType: '리커브', grade: '', classNum: '' };
+        return {
+          ...r,
+          division: r.division || athlete.division || '초등부',
+          bowType: r.bowType || athlete.bowType || '리커브',
+          comp,
+          athlete
+        };
+      });
+
+      const filtered = enriched.filter(item => {
+        if (resultsFilter.division !== '전체' && item.division !== resultsFilter.division) return false;
+        if (resultsFilter.bowType !== '전체' && item.bowType !== resultsFilter.bowType) return false;
+        if (resultsFilter.scale !== '전체' && item.comp.scale !== resultsFilter.scale) return false;
+        if (!matchesAwardFilter(item.award, resultsFilter.award)) return false;
+        if (resultsFilter.distance !== '전체' && item.event !== resultsFilter.distance) return false;
+        if (compFilter && item.compId !== compFilter) return false;
+        if (athleteFilter && item.athleteId !== athleteFilter) return false;
+        if (pbOnly && !item.isPB) return false;
+        if (search) {
+          const hay = `${item.comp.name} ${item.comp.scale} ${item.comp.location} ${item.division} ${item.bowType} ${item.athlete.name} ${item.athlete.grade} ${item.event} ${item.score} ${item.award} ${item.note}`.toLowerCase();
+          if (!hay.includes(search)) return false;
+        }
+        return true;
+      });
+
+      filtered.sort((a, b) => monthToNumber(b.comp.month) - monthToNumber(a.comp.month) || (b.date || b.comp.period || '').localeCompare(a.date || a.comp.period || ''));
+      lastFilteredResults = filtered;
+
+      const g = filtered.filter(i => i.award === '1위(금)').length;
+      const s = filtered.filter(i => i.award === '2위(은)').length;
+      const b = filtered.filter(i => i.award === '3위(동)').length;
+      const h = filtered.filter(i => i.award === '장려/입선').length;
+      const pb = filtered.filter(i => i.isPB).length;
+
+      document.getElementById('resultsSummaryBar').innerHTML = `
+        <span>총 <strong class="text-slate-900">${filtered.length}건</strong></span>
+        <span class="text-slate-300">|</span>
+        <span class="text-amber-700">1위(금) ${g}건</span>
+        <span class="text-slate-400">·</span>
+        <span class="text-slate-600">2위(은) ${s}건</span>
+        <span class="text-slate-400">·</span>
+        <span class="text-orange-700">3위(동) ${b}건</span>
+        <span class="text-slate-400">·</span>
+        <span class="text-blue-700">장려 ${h}건</span>
+        <span class="text-slate-400">·</span>
+        <span class="text-indigo-700">PB ${pb}건</span>
+      `;
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="12" class="px-6 py-12 text-center text-slate-400">선택하신 검색 조건에 해당하는 성과 기록이 없습니다.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(item => `
+        <tr class="hover:bg-slate-50 transition">
+          <td class="px-3 py-3 text-xs whitespace-nowrap">
+            <div class="font-bold text-slate-700">${escapeHTML(item.comp.month)}</div>
+            <div class="text-[11px] text-slate-400">${escapeHTML(item.date || item.comp.period)}</div>
+          </td>
+          <td class="px-3 py-3 font-semibold text-slate-900 min-w-[160px]">${escapeHTML(item.comp.name)}</td>
+          <td class="px-3 py-3 whitespace-nowrap">${getScaleBadgeHTML(item.comp.scale)}</td>
+          <td class="px-3 py-3 whitespace-nowrap">${getDivisionBadgeHTML(item.division)}</td>
+          <td class="px-3 py-3 whitespace-nowrap">${getBowBadgeHTML(item.bowType)}</td>
+          <td class="px-3 py-3 whitespace-nowrap">
+            <span class="font-bold text-slate-900">${escapeHTML(item.athlete.name)}</span>
+            <span class="text-xs text-slate-500 ml-1">${escapeHTML(item.athlete.grade)}</span>
+          </td>
+          <td class="px-3 py-3 whitespace-nowrap">
+            <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 text-xs font-bold border border-slate-200">${escapeHTML(item.event)}</span>
+          </td>
+          <td class="px-3 py-3 font-semibold text-slate-800 whitespace-nowrap">${escapeHTML(item.score || '-')}</td>
+          <td class="px-3 py-3 whitespace-nowrap">${getAwardBadgeHTML(item.award)}</td>
+          <td class="px-3 py-3 text-center whitespace-nowrap">
+            ${item.isPB ? `<span class="inline-block px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-200">⚡ PB</span>` : `<span class="text-slate-300">-</span>`}
+          </td>
+          <td class="px-3 py-3 text-xs text-slate-500 max-w-[160px] truncate" title="${escapeHTML(item.note)}">${escapeHTML(item.note || '-')}</td>
+          <td class="px-3 py-3 text-right whitespace-nowrap no-print space-x-1">
+            <button onclick="openResultModal('${item.id}')" class="px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition">수정</button>
+            <button onclick="confirmDeleteResult('${item.id}')" class="px-2 py-1 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold transition">삭제</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // ==================== 탭 3: 연간 대회 관리 + 모달 ====================
+
+    function renderCompetitionsTable() {
+      const tbody = document.getElementById('compTbody');
+      const sorted = [...appState.competitions].sort((a, b) => monthToNumber(a.month) - monthToNumber(b.month) || (a.period || '').localeCompare(b.period || ''));
+      document.getElementById('compBadgeCount').textContent = `총 ${sorted.length}개`;
+
+      if (sorted.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" class="px-6 py-12 text-center space-y-2.5">
+              <p class="text-slate-400">등록된 연간 대회가 없습니다.</p>
+              <button onclick="openCompModal()" class="px-4 py-2 rounded-xl bg-[#1E3A5F] hover:bg-brand-700 text-white text-xs font-bold transition no-print">+ 첫 대회 추가하기</button>
+            </td>
+          </tr>`;
+        return;
+      }
+
+      tbody.innerHTML = sorted.map(comp => {
+        const count = appState.results.filter(r => r.compId === comp.id).length;
+        return `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="px-3.5 py-3 text-xs whitespace-nowrap">
+              <div class="font-bold text-[#1E3A5F]">${escapeHTML(comp.month)}</div>
+              <div class="text-[11px] text-slate-400">${escapeHTML(comp.period)}</div>
+            </td>
+            <td class="px-3.5 py-3 whitespace-nowrap">${getScaleBadgeHTML(comp.scale)}</td>
+            <td class="px-3.5 py-3">
+              <div class="font-semibold text-slate-900">${escapeHTML(comp.name)}</div>
+              <div class="text-xs text-slate-500 mt-0.5">${escapeHTML(comp.location || '-')}</div>
+            </td>
+            <td class="px-3.5 py-3 whitespace-nowrap">${getDivisionBadgeHTML(comp.division)}</td>
+            <td class="px-3.5 py-3 whitespace-nowrap">${getBowBadgeHTML(comp.bowType)}</td>
+            <td class="px-3.5 py-3 text-xs text-slate-600">${escapeHTML(comp.note || '-')}</td>
+            <td class="px-3.5 py-3 text-center whitespace-nowrap">
+              <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">${count}건</span>
+            </td>
+            <td class="px-3.5 py-3 text-right whitespace-nowrap no-print space-x-1">
+              <button onclick="openCompModal('${comp.id}')" class="px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition">수정</button>
+              <button onclick="confirmDeleteCompetition('${comp.id}')" class="px-2.5 py-1 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold transition">삭제</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function openCompModal(compId = null) {
+      document.getElementById('compForm').reset();
+      if (compId) {
+        const comp = appState.competitions.find(c => c.id === compId);
+        if (!comp) return;
+        document.getElementById('compModalTitle').textContent = '🏆 연간 대회 정보 수정';
+        document.getElementById('compSubmitBtn').textContent = '수정 저장';
+        document.getElementById('editCompId').value = comp.id;
+        document.getElementById('compNameInput').value = comp.name;
+        document.getElementById('compMonthInput').value = comp.month;
+        document.getElementById('compScaleInput').value = comp.scale;
+        document.getElementById('compDivisionInput').value = comp.division || '초·중 통합';
+        document.getElementById('compBowInput').value = comp.bowType || '통합';
+        document.getElementById('compPeriodInput').value = comp.period;
+        document.getElementById('compLocationInput').value = comp.location || '';
+        document.getElementById('compNoteInput').value = comp.note || '';
+      } else {
+        document.getElementById('compModalTitle').textContent = '🏆 새 연간 대회 추가';
+        document.getElementById('compSubmitBtn').textContent = '대회 추가';
+        document.getElementById('editCompId').value = '';
+      }
+
+      const modal = document.getElementById('compModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      setTimeout(() => document.getElementById('compNameInput').focus(), 50);
+    }
+
+    function closeCompModal() {
+      const modal = document.getElementById('compModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function handleSaveCompetition(e) {
+      e.preventDefault();
+      const editId = document.getElementById('editCompId').value;
+      const name = document.getElementById('compNameInput').value.trim();
+      const month = document.getElementById('compMonthInput').value;
+      const scale = document.getElementById('compScaleInput').value;
+      const division = document.getElementById('compDivisionInput').value;
+      const bowType = document.getElementById('compBowInput').value;
+      const period = document.getElementById('compPeriodInput').value.trim();
+      const location = document.getElementById('compLocationInput').value.trim();
+      const note = document.getElementById('compNoteInput').value.trim();
+
+      if (!name || !period) return;
+
+      const payload = { id: editId || uid('c'), name, month, scale, division, bowType, period, location, note };
+      if (editId) {
+        const idx = appState.competitions.findIndex(c => c.id === editId);
+        if (idx !== -1) appState.competitions[idx] = payload;
+        showToast(`'${name}' 대회 정보가 수정되었습니다.`);
+      } else {
+        appState.competitions.push(payload);
+        showToast(`'${name}' 대회가 추가되었습니다.`);
+      }
+
+      saveState();
+      closeCompModal();
+      renderAll();
+    }
+
+    function confirmDeleteCompetition(compId) {
+      const comp = appState.competitions.find(c => c.id === compId);
+      if (!comp) return;
+      const relatedCount = appState.results.filter(r => r.compId === compId).length;
+      openConfirmModal(
+        '연간 대회 삭제',
+        `'${comp.name}' 대회를 삭제하시겠습니까?${relatedCount > 0 ? ` 연결된 성과 기록 ${relatedCount}건도 함께 삭제됩니다.` : ''}`,
+        () => {
+          appState.competitions = appState.competitions.filter(c => c.id !== compId);
+          appState.results = appState.results.filter(r => r.compId !== compId);
+          saveState();
+          renderAll();
+          showToast('대회가 삭제되었습니다.', 'info');
+        }
+      );
+    }
+
+    // ==================== 탭 4: 학생선수 명단 + 모달 ====================
+
+    function syncAthleteGradeOptions(selectedGrade = null) {
+      const div = document.getElementById('athleteDivisionInput').value;
+      const gradeSelect = document.getElementById('athleteGradeInput');
+      const opts = GRADE_OPTIONS_BY_DIVISION[div] || GRADE_OPTIONS_BY_DIVISION['초등부'];
+      gradeSelect.innerHTML = opts.map(g => `<option value="${g}">${g}</option>`).join('');
+      if (selectedGrade && opts.includes(selectedGrade)) {
+        gradeSelect.value = selectedGrade;
+      }
+    }
+
+    function renderAthletesTable() {
+      const tbody = document.getElementById('athleteTbody');
+      document.getElementById('athleteBadgeCount').textContent = `총 ${appState.athletes.length}명`;
+
+      if (appState.athletes.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" class="px-6 py-12 text-center space-y-2.5">
+              <p class="text-slate-400">등록된 학생선수가 없습니다.</p>
+              <button onclick="openAthleteModal()" class="px-4 py-2 rounded-xl bg-[#1E3A5F] hover:bg-brand-700 text-white text-xs font-bold transition no-print">+ 첫 학생선수 추가하기</button>
+            </td>
+          </tr>`;
+        return;
+      }
+
+      tbody.innerHTML = appState.athletes.map(a => {
+        const res = appState.results.filter(r => r.athleteId === a.id);
+        const g = res.filter(r => r.award === '1위(금)').length;
+        const s = res.filter(r => r.award === '2위(은)').length;
+        const b = res.filter(r => r.award === '3위(동)').length;
+        const h = res.filter(r => r.award === '장려/입선').length;
+
+        return `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="px-3.5 py-3 whitespace-nowrap">${getDivisionBadgeHTML(a.division)}</td>
+            <td class="px-3.5 py-3 whitespace-nowrap">${getBowBadgeHTML(a.bowType)}</td>
+            <td class="px-3.5 py-3 text-xs font-semibold text-slate-600 whitespace-nowrap">${escapeHTML(a.grade)} ${escapeHTML(a.classNum || '')}</td>
+            <td class="px-3.5 py-3 whitespace-nowrap">
+              <span class="font-bold text-slate-900">${escapeHTML(a.name)}</span>
+              <span class="text-[11px] text-slate-500 ml-1">(${escapeHTML(a.gender || '-')})</span>
+            </td>
+            <td class="px-3.5 py-3 text-xs font-bold text-indigo-700 whitespace-nowrap">${escapeHTML(a.pb || '-')}</td>
+            <td class="px-3.5 py-3 whitespace-nowrap">
+              <div class="flex items-center gap-1 text-[11px] font-bold">
+                <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">금${g}</span>
+                <span class="px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">은${s}</span>
+                <span class="px-1.5 py-0.5 rounded bg-orange-100 text-orange-800">동${b}</span>
+                ${h > 0 ? `<span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">장${h}</span>` : ''}
+              </div>
+            </td>
+            <td class="px-3.5 py-3 text-xs text-slate-500">${escapeHTML(a.note || '-')}</td>
+            <td class="px-3.5 py-3 text-right whitespace-nowrap no-print space-x-1">
+              <button onclick="openAthleteModal('${a.id}')" class="px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition">수정</button>
+              <button onclick="confirmDeleteAthlete('${a.id}')" class="px-2.5 py-1 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold transition">삭제</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function openAthleteModal(athleteId = null) {
+      document.getElementById('athleteForm').reset();
+      if (athleteId) {
+        const a = appState.athletes.find(x => x.id === athleteId);
+        if (!a) return;
+        document.getElementById('athleteModalTitle').textContent = '👥 학생선수 정보 수정';
+        document.getElementById('athleteSubmitBtn').textContent = '수정 저장';
+        document.getElementById('editAthleteId').value = a.id;
+        document.getElementById('athleteDivisionInput').value = a.division || '초등부';
+        syncAthleteGradeOptions(a.grade);
+        document.getElementById('athleteBowInput').value = a.bowType || '리커브';
+        document.getElementById('athleteClassInput').value = a.classNum || '';
+        document.getElementById('athleteGenderInput').value = a.gender || '여';
+        document.getElementById('athleteNameInput').value = a.name;
+        document.getElementById('athletePBInput').value = a.pb || '';
+        document.getElementById('athleteNoteInput').value = a.note || '';
+      } else {
+        document.getElementById('athleteModalTitle').textContent = '👥 새 학생선수 추가';
+        document.getElementById('athleteSubmitBtn').textContent = '선수 추가';
+        document.getElementById('editAthleteId').value = '';
+        document.getElementById('athleteDivisionInput').value = '초등부';
+        syncAthleteGradeOptions();
+      }
+
+      const modal = document.getElementById('athleteModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      setTimeout(() => document.getElementById('athleteNameInput').focus(), 50);
+    }
+
+    function closeAthleteModal() {
+      const modal = document.getElementById('athleteModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function handleSaveAthlete(e) {
+      e.preventDefault();
+      const editId = document.getElementById('editAthleteId').value;
+      const division = document.getElementById('athleteDivisionInput').value;
+      const bowType = document.getElementById('athleteBowInput').value;
+      const grade = document.getElementById('athleteGradeInput').value;
+      const classNum = document.getElementById('athleteClassInput').value.trim();
+      const gender = document.getElementById('athleteGenderInput').value;
+      const name = document.getElementById('athleteNameInput').value.trim();
+      const pb = document.getElementById('athletePBInput').value.trim();
+      const note = document.getElementById('athleteNoteInput').value.trim();
+
+      if (!name) return;
+
+      const payload = { id: editId || uid('a'), division, bowType, grade, classNum, gender, name, pb, note };
+      if (editId) {
+        const idx = appState.athletes.findIndex(a => a.id === editId);
+        if (idx !== -1) appState.athletes[idx] = payload;
+        showToast(`'${name}' 선수 정보가 수정되었습니다.`);
+      } else {
+        appState.athletes.push(payload);
+        showToast(`'${name}' 선수가 명단에 추가되었습니다.`);
+      }
+
+      saveState();
+      closeAthleteModal();
+      renderAll();
+    }
+
+    function confirmDeleteAthlete(athleteId) {
+      const a = appState.athletes.find(x => x.id === athleteId);
+      if (!a) return;
+      const relatedCount = appState.results.filter(r => r.athleteId === athleteId).length;
+      openConfirmModal(
+        '학생선수 삭제',
+        `'${a.name}' 선수를 명단에서 삭제하시겠습니까?${relatedCount > 0 ? ` 이 선수의 성과 기록 ${relatedCount}건도 함께 삭제됩니다.` : ''}`,
+        () => {
+          appState.athletes = appState.athletes.filter(x => x.id !== athleteId);
+          appState.results = appState.results.filter(r => r.athleteId !== athleteId);
+          saveState();
+          renderAll();
+          showToast('학생선수가 삭제되었습니다.', 'info');
+        }
+      );
+    }
+
+    // ==================== 성과 기록 스마트 모달 ====================
+
+    function onResultCompChange() {
+      const compId = document.getElementById('resCompId').value;
+      const comp = appState.competitions.find(c => c.id === compId);
+      const dateInput = document.getElementById('resDate');
+      if (comp && !document.getElementById('editResultId').value) {
+        dateInput.value = comp.period || '';
+      }
+    }
+
+    function onResultAthleteChange() {
+      const athleteId = document.getElementById('resAthleteId').value;
+      const ath = appState.athletes.find(a => a.id === athleteId);
+      if (ath) {
+        document.getElementById('resDivision').value = ath.division || '초등부';
+        document.getElementById('resBowType').value = ath.bowType || '리커브';
+      }
+      renderModalDistanceChips();
+    }
+
+    function renderModalDistanceChips() {
+      const div = document.getElementById('resDivision').value || '초등부';
+      const bow = document.getElementById('resBowType').value || '리커브';
+      const currentVal = document.getElementById('resEvent').value.trim();
+      const officialList = (OFFICIAL_DISTANCES[div] && OFFICIAL_DISTANCES[div][bow]) || OFFICIAL_DISTANCES['초등부']['리커브'];
+
+      const hintEl = document.getElementById('modalOfficialDistHint');
+      hintEl.textContent = `${div} ${bow} 공식 거리/부문`;
+      hintEl.className = bow === '컴파운드'
+        ? 'text-[11px] font-bold text-emerald-700'
+        : 'text-[11px] font-bold text-indigo-700';
+
+      const activeColor = bow === '컴파운드'
+        ? 'bg-emerald-600 text-white border-emerald-600'
+        : 'bg-indigo-600 text-white border-indigo-600';
+
+      const container = document.getElementById('modalDistanceChips');
+      container.innerHTML = officialList.map(dist => {
+        const isSelected = currentVal === dist;
+        const cls = isSelected
+          ? `${activeColor} shadow-xs`
+          : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100';
+        return `<button type="button" onclick="selectModalDistance('${dist}')" class="px-2.5 py-1 rounded-lg text-xs font-bold border transition ${cls}">${dist}</button>`;
+      }).join('');
+    }
+
+    function selectModalDistance(dist) {
+      document.getElementById('resEvent').value = dist;
+      renderModalDistanceChips();
+    }
+
+    function openResultModal(resultId = null, prefillCompId = null, prefillAthleteId = null) {
+      if (appState.competitions.length === 0) {
+        showToast('먼저 상단의 [+ 대회 추가] 버튼으로 대회를 등록해 주세요.', 'error');
+        return;
+      }
+      if (appState.athletes.length === 0) {
+        showToast('먼저 상단의 [+ 선수 추가] 버튼으로 학생선수를 등록해 주세요.', 'error');
+        return;
+      }
+
+      const compSelect = document.getElementById('resCompId');
+      const athleteSelect = document.getElementById('resAthleteId');
+      const sortedComps = [...appState.competitions].sort((a, b) => monthToNumber(a.month) - monthToNumber(b.month));
+
+      compSelect.innerHTML = sortedComps.map(c => `<option value="${c.id}">[${c.scale}] ${escapeHTML(c.name)} (${escapeHTML(c.month)})</option>`).join('');
+      athleteSelect.innerHTML = appState.athletes.map(a => `<option value="${a.id}">[${a.division}/${a.bowType}] ${escapeHTML(a.name)} (${escapeHTML(a.grade)})</option>`).join('');
+
+      document.getElementById('resultForm').reset();
+      const delBtn = document.getElementById('resDeleteBtn');
+
+      if (resultId) {
+        const target = appState.results.find(r => r.id === resultId);
+        if (!target) return;
+        document.getElementById('resultModalTitle').textContent = '🎯 성과 기록 수정';
+        document.getElementById('editResultId').value = target.id;
+        compSelect.value = target.compId;
+        const comp = appState.competitions.find(c => c.id === target.compId);
+        document.getElementById('resDate').value = target.date || (comp ? comp.period : '');
+        athleteSelect.value = target.athleteId;
+        const ath = appState.athletes.find(a => a.id === target.athleteId);
+        document.getElementById('resDivision').value = target.division || (ath ? ath.division : '초등부');
+        document.getElementById('resBowType').value = target.bowType || (ath ? ath.bowType : '리커브');
+        document.getElementById('resEvent').value = target.event || '';
+        document.getElementById('resScore').value = target.score || '';
+        document.getElementById('resAward').value = target.award || '참가';
+        document.getElementById('resIsPB').checked = !!target.isPB;
+        document.getElementById('resNote').value = target.note || '';
+        delBtn.classList.remove('hidden');
+        renderModalDistanceChips();
+      } else {
+        document.getElementById('resultModalTitle').textContent = '🎯 새 성과 기록 기입';
+        document.getElementById('editResultId').value = '';
+        if (prefillCompId) compSelect.value = prefillCompId;
+        if (prefillAthleteId) athleteSelect.value = prefillAthleteId;
+        delBtn.classList.add('hidden');
+        onResultCompChange();
+        onResultAthleteChange();
+      }
+
+      const modal = document.getElementById('resultModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeResultModal() {
+      const modal = document.getElementById('resultModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function handleSaveResult(e) {
+      e.preventDefault();
+      const editId = document.getElementById('editResultId').value;
+      const compId = document.getElementById('resCompId').value;
+      const date = document.getElementById('resDate').value.trim();
+      const athleteId = document.getElementById('resAthleteId').value;
+      const division = document.getElementById('resDivision').value;
+      const bowType = document.getElementById('resBowType').value;
+      const eventName = document.getElementById('resEvent').value.trim();
+      const score = document.getElementById('resScore').value.trim();
+      const award = document.getElementById('resAward').value;
+      const isPB = document.getElementById('resIsPB').checked;
+      const note = document.getElementById('resNote').value.trim();
+
+      const payload = { id: editId || uid('r'), compId, date, athleteId, division, bowType, event: eventName, score, award, isPB, note };
+      if (editId) {
+        const idx = appState.results.findIndex(r => r.id === editId);
+        if (idx !== -1) appState.results[idx] = payload;
+        showToast('성과 기록이 수정되었습니다.');
+      } else {
+        appState.results.push(payload);
+        showToast('새 성과 기록이 저장되었습니다.');
+      }
+
+      saveState();
+      closeResultModal();
+      renderAll();
+    }
+
+    function deleteResultFromModal() {
+      const editId = document.getElementById('editResultId').value;
+      if (!editId) return;
+      closeResultModal();
+      confirmDeleteResult(editId);
+    }
+
+    function confirmDeleteResult(resultId) {
+      openConfirmModal(
+        '성과 기록 삭제',
+        '선택한 성과 기록을 삭제하시겠습니까?',
+        () => {
+          appState.results = appState.results.filter(r => r.id !== resultId);
+          saveState();
+          renderAll();
+          showToast('성과 기록이 삭제되었습니다.', 'info');
+        }
+      );
+    }
+
+    // ==================== 학교/운동부 정보 및 확인 모달 ====================
+
+    function openMetaModal() {
+      document.getElementById('metaYearInput').value = appState.meta.year;
+      document.getElementById('metaSchoolInput').value = appState.meta.schoolName;
+      document.getElementById('metaClubInput').value = appState.meta.clubName;
+      const modal = document.getElementById('metaModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeMetaModal() {
+      const modal = document.getElementById('metaModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function handleSaveMeta(e) {
+      e.preventDefault();
+      appState.meta.year = document.getElementById('metaYearInput').value.trim();
+      appState.meta.schoolName = document.getElementById('metaSchoolInput').value.trim();
+      appState.meta.clubName = document.getElementById('metaClubInput').value.trim();
+      saveState();
+      closeMetaModal();
+      renderHeader();
+      showToast('학교 및 운동부 정보가 업데이트되었습니다.');
+    }
+
+    function openConfirmModal(title, message, onConfirm) {
+      document.getElementById('confirmTitle').textContent = title;
+      document.getElementById('confirmMessage').textContent = message;
+      confirmCallback = onConfirm;
+      const modal = document.getElementById('confirmModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeConfirmModal() {
+      const modal = document.getElementById('confirmModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      confirmCallback = null;
+    }
+
+    document.getElementById('confirmOkBtn').addEventListener('click', () => {
+      if (typeof confirmCallback === 'function') confirmCallback();
+      closeConfirmModal();
+    });
+
+    function confirmResetAll() {
+      openConfirmModal(
+        '전체 초기화 (빈 양식으로 시작)',
+        '입력된 모든 대회, 학생선수, 성과 기록이 삭제되고 빈 양식으로 초기화됩니다. 계속하시겠습니까?',
+        () => {
+          appState = getEmptyData();
+          saveState();
+          resetOverviewFilters();
+          resetResultsFilters();
+          renderAll();
+          showToast('빈 양식으로 초기화되었습니다.', 'info');
+        }
+      );
+    }
+
+    function confirmLoadSample() {
+      openConfirmModal(
+        '예시 데이터 불러오기',
+        '현재 데이터를 초등부·중등부 통합 양궁부 예시 데이터(리커브·컴파운드 및 거리별 기록 포함)로 덮어씁니다. 계속하시겠습니까?',
+        () => {
+          appState = getSampleData();
+          saveState();
+          resetOverviewFilters();
+          resetResultsFilters();
+          renderAll();
+          showToast('초·중등부 양궁 예시 데이터를 불러왔습니다.');
+        }
+      );
+    }
+
+    // ==================== 엑셀 호환 UTF-8 BOM CSV 내보내기 ====================
+
+    function csvCell(value) {
+      const str = value === null || value === undefined ? '' : String(value);
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+
+    function downloadCSV(filename, rows) {
+      const csvContent = '\uFEFF' + rows.map(row => row.map(csvCell).join(',')).join('\r\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function buildResultsCSVRows(enrichedList) {
+      const headers = ['개최월', '대회일자', '대회규모', '대회명', '장소', '부별', '종별', '학년', '반', '학생선수명', '성별', '세부거리/부문', '기록/점수', '입상결과', 'PB여부', '비고'];
+      const rows = [headers];
+      enrichedList.forEach(item => {
+        rows.push([
+          item.comp.month || '',
+          item.date || item.comp.period || '',
+          item.comp.scale || '',
+          item.comp.name || '',
+          item.comp.location || '',
+          item.division || item.athlete.division || '',
+          item.bowType || item.athlete.bowType || '',
+          item.athlete.grade || '',
+          item.athlete.classNum || '',
+          item.athlete.name || '',
+          item.athlete.gender || '',
+          item.event || '',
+          item.score || '',
+          item.award || '',
+          item.isPB ? 'PB달성' : '',
+          item.note || ''
+        ]);
+      });
+      return rows;
+    }
+
+    function exportAllResultsCSV() {
+      const enriched = appState.results.map(r => {
+        const comp = appState.competitions.find(c => c.id === r.compId) || {};
+        const athlete = appState.athletes.find(a => a.id === r.athleteId) || {};
+        return { ...r, comp, athlete };
+      }).sort((a, b) => monthToNumber(a.comp.month) - monthToNumber(b.comp.month));
+
+      downloadCSV('ArchLog_상세성과.csv', buildResultsCSVRows(enriched));
+      showToast('ArchLog_상세성과.csv 파일이 다운로드되었습니다.');
+    }
+
+    function exportFilteredResultsCSV() {
+      if (lastFilteredResults.length === 0) {
+        showToast('내보낼 검색 결과가 없습니다.', 'error');
+        return;
+      }
+      downloadCSV('ArchLog_검색결과.csv', buildResultsCSVRows(lastFilteredResults));
+      showToast(`현재 검색 결과 ${lastFilteredResults.length}건이 ArchLog_검색결과.csv로 다운로드되었습니다.`);
+    }
+
+    function exportMatrixCSV() {
+      const { filteredComps, filteredAthletes, filteredResults } = getOverviewFilteredData();
+      const headers = ['부별', '주종목', '학년', '반', '학생선수명', '성별', '개인최고기록', ...filteredComps.map(c => `[${c.scale}] ${c.name} (${c.month})`), '입상요약'];
+      const rows = [headers];
+
+      filteredAthletes.forEach(athlete => {
+        const athRes = filteredResults.filter(r => r.athleteId === athlete.id);
+        const g = athRes.filter(r => r.award === '1위(금)').length;
+        const s = athRes.filter(r => r.award === '2위(은)').length;
+        const b = athRes.filter(r => r.award === '3위(동)').length;
+        const h = athRes.filter(r => r.award === '장려/입선').length;
+
+        const compCells = filteredComps.map(comp => {
+          const cellRes = filteredResults.filter(r => r.athleteId === athlete.id && r.compId === comp.id);
+          if (cellRes.length === 0) return '-';
+          return cellRes.map(r => `${r.event} ${r.award}${r.score ? ' ' + r.score : ''}${r.isPB ? ' PB' : ''}`).join(' / ');
+        });
+
+        rows.push([
+          athlete.division,
+          athlete.bowType,
+          athlete.grade,
+          athlete.classNum || '',
+          athlete.name,
+          athlete.gender || '',
+          athlete.pb || '',
+          ...compCells,
+          `금${g} 은${s} 동${b} 장려${h}`
+        ]);
+      });
+
+      downloadCSV('ArchLog_연간매트릭스.csv', rows);
+      showToast('ArchLog_연간매트릭스.csv 파일이 다운로드되었습니다.');
+    }
+
+    // 앱 초기 실행
+    window.addEventListener('DOMContentLoaded', () => {
+      syncAthleteGradeOptions();
+      renderAll();
+      switchTab('overview');
+    });
+  </script>
+</body>
+</html>
